@@ -9,31 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style id="app-style">
   :root{
-    --bg:#f7f2ea; --surface:#ffffff; --surface-2:#f0e9db; --border:#e2d8c4;
-    --text:#201b28; --text-muted:#75697f;
-    --accent:#ff3d6e; --accent-contrast:#ffffff;
-    --accent-soft: color-mix(in srgb, #ff3d6e 13%, #ffffff);
-    --hue-pink:#ff3d6e; --hue-blue:#3272c9; --hue-teal:#1f9e77; --hue-amber:#d98524;
-    --hue-violet:#7c5fd1; --hue-rust:#b34534; --hue-grey:#8d8698;
-    --floor-bg:#efe6d4; --floor-line:#d8cbae; --floor-center:#c9364f;
-    --danger:#c9364f; --danger-soft: color-mix(in srgb, #c9364f 12%, #ffffff);
-    --shadow: 0 8px 24px -12px rgba(32,27,40,.28);
-    --radius: 14px;
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#121017; --surface:#1c1823; --surface-2:#252030; --border:#37313f;
-      --text:#f2eef5; --text-muted:#aa9fbc;
-      --accent:#ff5c86; --accent-contrast:#1b1720;
-      --accent-soft: color-mix(in srgb, #ff5c86 16%, #1c1823);
-      --hue-pink:#ff5c86; --hue-blue:#5d9cf0; --hue-teal:#3fce9f; --hue-amber:#eeab52;
-      --hue-violet:#a68cf0; --hue-rust:#e08a7c; --hue-grey:#9a93a8;
-      --floor-bg:#1c1826; --floor-line:#372f45; --floor-center:#ff6b86;
-      --danger:#ff6b81; --danger-soft: color-mix(in srgb, #ff6b81 16%, #1c1823);
-      --shadow: 0 8px 28px -12px rgba(0,0,0,.55);
-    }
-  }
-  :root[data-theme="dark"]{
     --bg:#121017; --surface:#1c1823; --surface-2:#252030; --border:#37313f;
     --text:#f2eef5; --text-muted:#aa9fbc;
     --accent:#ff5c86; --accent-contrast:#1b1720;
@@ -43,6 +18,7 @@
     --floor-bg:#1c1826; --floor-line:#372f45; --floor-center:#ff6b86;
     --danger:#ff6b81; --danger-soft: color-mix(in srgb, #ff6b81 16%, #1c1823);
     --shadow: 0 8px 28px -12px rgba(0,0,0,.55);
+    --radius: 14px;
   }
 
   *{box-sizing:border-box;}
@@ -196,9 +172,12 @@
   .tl-mark.a{ background:var(--hue-teal); }
   .tl-mark.b{ background:var(--hue-blue); }
   .tl-mark span{ position:absolute; top:2px; left:4px; font-size:10px; font-weight:700; color:var(--text); background:var(--surface); padding:0 3px; border-radius:4px; white-space:nowrap; }
+  .tl-scene-mark{ position:absolute; top:0; bottom:0; width:1px; background:var(--accent); opacity:.5; pointer-events:none; }
   .tl-label{ position:absolute; bottom:2px; font-size:9px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace; transform:translateX(-50%); pointer-events:none; }
   .count-split-box{ border:1px dashed var(--border); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px; }
   .count-split-box .row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .transport-row{ display:flex; gap:6px; align-items:stretch; }
+  .transport-row #audioPlayBtn{ flex:1; }
 
   .stage-panel{ display:flex; flex-direction:column; min-height:0; padding:12px 14px; gap:10px; overflow:auto; }
   .sel-toolbar{
@@ -238,6 +217,7 @@
   .count-note-cell input:focus{ outline:none; }
   .roster-row{ display:flex; gap:6px; align-items:center; }
   .roster-row input{ flex:1; border:1px solid var(--border); background:var(--surface); padding:6px 8px; border-radius:7px; }
+  .roster-row input[type="color"]{ flex:0 0 32px; width:32px; height:32px; padding:2px; }
   .roster-row select{ border:1px solid var(--border); background:var(--surface); padding:6px 8px; border-radius:7px; }
 
   /* ---------- footer scene strip ---------- */
@@ -331,6 +311,8 @@
     other:    { label:'その他',           hue:'--hue-grey' }
   };
   var PART_ORDER = ['flyer','base','backspot','dancer','tumbler','other'];
+  var KOMA_COLOR_PALETTE = ['#ff5c86','#5d9cf0','#3fce9f','#eeab52','#a68cf0','#e08a7c','#4fc3d9','#d9c24f','#7d8de0','#e069a6','#6bbf7a','#c08a6b'];
+  function nextKomaColor(idx){ return KOMA_COLOR_PALETTE[idx % KOMA_COLOR_PALETTE.length]; }
 
   var STUNT_ROLES = {
     top:     { label:'トップ',       short:'T', hue:'--hue-pink' },
@@ -339,12 +321,46 @@
     hands:   { label:'ハンズ',       short:'H', hue:'--hue-amber' }
   };
   var STUNT_TYPES = {
-    normal:    { label:'通常',         baseSpacing:9,  spotterOffset:15, handsSpacing:20, topOffset:11 },
-    extension: { label:'エクステンション', baseSpacing:7,  spotterOffset:18, handsSpacing:22, topOffset:15 },
-    basket:    { label:'バスケットトス', baseSpacing:11, spotterOffset:13, handsSpacing:16, topOffset:9 },
-    halfup:    { label:'ハーフアップ',   baseSpacing:9,  spotterOffset:11, handsSpacing:18, topOffset:7 }
+    stand:         { label:'スタンド',           baseSpacing:5, spotterOffset:7,  handsSpacing:10, topOffset:5 },
+    halfup:        { label:'ハーフアップ',       baseSpacing:5, spotterOffset:6,  handsSpacing:10, topOffset:4 },
+    fullup:        { label:'フルアップ',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:9 },
+    extension:     { label:'エクステンション',   baseSpacing:5, spotterOffset:10, handsSpacing:12, topOffset:9 },
+    liberty:       { label:'リバティ',           baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
+    arabesque:     { label:'アラベスク',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
+    heel:          { label:'ヒール',             baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
+    scorpion:      { label:'スコーピオン',       baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
+    shoulderstand: { label:'ショルダースタンド', baseSpacing:5, spotterOffset:8,  handsSpacing:10, topOffset:6 },
+    elevator:      { label:'エレベーター',       baseSpacing:5, spotterOffset:8,  handsSpacing:11, topOffset:6 },
+    pyramid:       { label:'ピラミッド',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:7 },
+    sidebyside:    { label:'サイドサイ',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:7 },
+    stack:         { label:'スタック',           baseSpacing:4, spotterOffset:7,  handsSpacing:9,  topOffset:5 }
   };
-  var STUNT_TYPE_ORDER = ['normal','extension','basket','halfup'];
+  var STUNT_TYPE_ORDER = ['stand','halfup','fullup','extension','liberty','arabesque','heel','scorpion','shoulderstand','elevator','pyramid','sidebyside','stack'];
+
+  function svgPicto(inner){
+    return '<g fill="none" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round">'+inner+'</g>';
+  }
+  var STUNT_PICTOS = {
+    stand: svgPicto('<circle cx="10" cy="4" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="7" x2="10" y2="18"></line><line x1="10" y1="10" x2="5" y2="15"></line><line x1="10" y1="10" x2="15" y2="15"></line><line x1="10" y1="18" x2="6" y2="25"></line><line x1="10" y1="18" x2="14" y2="25"></line>'),
+    halfup: svgPicto('<circle cx="10" cy="4" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="7" x2="10" y2="18"></line><line x1="10" y1="9" x2="5" y2="6"></line><line x1="10" y1="9" x2="15" y2="6"></line><line x1="10" y1="18" x2="6" y2="25"></line><line x1="10" y1="18" x2="14" y2="25"></line>'),
+    fullup: svgPicto('<circle cx="10" cy="6" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="9" x2="10" y2="20"></line><line x1="10" y1="10" x2="4" y2="0"></line><line x1="10" y1="10" x2="16" y2="0"></line><line x1="10" y1="20" x2="6" y2="26"></line><line x1="10" y1="20" x2="14" y2="26"></line>'),
+    extension: svgPicto('<circle cx="10" cy="6" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="9" x2="10" y2="19"></line><line x1="10" y1="10" x2="3" y2="3"></line><line x1="10" y1="10" x2="17" y2="3"></line><line x1="10" y1="19" x2="6" y2="26"></line><line x1="10" y1="19" x2="14" y2="26"></line>'),
+    liberty: svgPicto('<circle cx="10" cy="4" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="7" x2="10" y2="18"></line><line x1="10" y1="9" x2="5" y2="13"></line><line x1="10" y1="9" x2="15" y2="13"></line><line x1="10" y1="18" x2="9" y2="26"></line><path d="M10,18 Q16,20 13,15"></path>'),
+    arabesque: svgPicto('<circle cx="8" cy="6" r="3" fill="var(--text)" stroke="none"></circle><line x1="8" y1="9" x2="12" y2="17"></line><line x1="9" y1="10" x2="3" y2="8"></line><line x1="9" y1="10" x2="15" y2="6"></line><line x1="12" y1="17" x2="8" y2="24"></line><line x1="12" y1="17" x2="19" y2="14"></line>'),
+    heel: svgPicto('<circle cx="8" cy="4" r="3" fill="var(--text)" stroke="none"></circle><line x1="8" y1="7" x2="9" y2="18"></line><line x1="8" y1="9" x2="15" y2="4"></line><line x1="8" y1="9" x2="3" y2="13"></line><line x1="9" y1="18" x2="6" y2="25"></line><path d="M9,18 L16,6"></path>'),
+    scorpion: svgPicto('<circle cx="8" cy="14" r="3" fill="var(--text)" stroke="none"></circle><path d="M8,17 Q5,10 10,4"></path><line x1="8" y1="15" x2="14" y2="10"></line><line x1="8" y1="15" x2="2" y2="17"></line><line x1="10" y1="4" x2="15" y2="1"></line><path d="M10,4 Q3,2 6,10"></path>'),
+    shoulderstand: svgPicto('<circle cx="10" cy="4" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="7" x2="10" y2="16"></line><line x1="10" y1="9" x2="5" y2="12"></line><line x1="10" y1="9" x2="15" y2="12"></line><line x1="10" y1="16" x2="10" y2="20"></line><line x1="3" y1="20" x2="17" y2="20"></line>'),
+    elevator: svgPicto('<circle cx="10" cy="5" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="8" x2="10" y2="14"></line><line x1="10" y1="9" x2="5" y2="12"></line><line x1="10" y1="9" x2="15" y2="12"></line><line x1="4" y1="14" x2="16" y2="14"></line><line x1="6" y1="14" x2="4" y2="24"></line><line x1="14" y1="14" x2="16" y2="24"></line>'),
+    pyramid: svgPicto('<circle cx="10" cy="4" r="2" fill="var(--text)" stroke="none"></circle><circle cx="4" cy="16" r="2" fill="var(--text)" stroke="none"></circle><circle cx="16" cy="16" r="2" fill="var(--text)" stroke="none"></circle><line x1="10" y1="6" x2="4" y2="14"></line><line x1="10" y1="6" x2="16" y2="14"></line><line x1="4" y1="16" x2="16" y2="16"></line>'),
+    sidebyside: svgPicto('<circle cx="5" cy="4" r="2.5" fill="var(--text)" stroke="none"></circle><line x1="5" y1="6.5" x2="5" y2="18"></line><line x1="5" y1="18" x2="3" y2="25"></line><line x1="5" y1="18" x2="7" y2="25"></line><circle cx="15" cy="4" r="2.5" fill="var(--text)" stroke="none"></circle><line x1="15" y1="6.5" x2="15" y2="18"></line><line x1="15" y1="18" x2="13" y2="25"></line><line x1="15" y1="18" x2="17" y2="25"></line>'),
+    stack: svgPicto('<circle cx="10" cy="3" r="2" fill="var(--text)" stroke="none"></circle><circle cx="10" cy="13" r="2.5" fill="var(--text)" stroke="none"></circle><circle cx="10" cy="23" r="3" fill="var(--text)" stroke="none"></circle><line x1="10" y1="5" x2="10" y2="10.5"></line><line x1="10" y1="15.5" x2="10" y2="20"></line>')
+  };
+
+  var TUMBLE_SKILLS = {
+    roundoff: 'ロンダート', roundoff_bhs: 'ロンダートバク転', bhs: 'バク転', cartwheel: '側転',
+    frontwalkover: '前方展開', backwalkover: '後方展開', frontroll: '前転'
+  };
+  var TUMBLE_SKILL_ORDER = ['roundoff','roundoff_bhs','bhs','cartwheel','frontwalkover','backwalkover','frontroll'];
 
   var SECTION_DEFS = {
     opening:    { label:'オープニング', color:'#7c5fd1' },
@@ -717,7 +733,7 @@
   function layoutStuntGroup(group, sc){
     var center = centroidOf(group.memberIds, sc);
     var comp = group.composition;
-    var t = STUNT_TYPES[group.stuntType] || STUNT_TYPES.normal;
+    var t = STUNT_TYPES[group.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
     if(comp.top) setPos(sc, comp.top, center.x, center.y-t.topOffset);
     distributeAlongX(sc, comp.base, center.x, center.y+7, t.baseSpacing);
     if(comp.spotter) setPos(sc, comp.spotter, center.x, center.y+t.spotterOffset);
@@ -782,7 +798,7 @@
     if(ids.length<2) return;
     pushHistory();
     removeFromAllGroups(sc, ids);
-    var group = { id:uid('grp'), type:'stunt', stuntType: stuntType||'normal', memberIds:ids.slice(), composition:autoComposition(ids) };
+    var group = { id:uid('grp'), type:'stunt', stuntType: stuntType||STUNT_TYPE_ORDER[0], memberIds:ids.slice(), composition:autoComposition(ids) };
     sc.groups = sc.groups||[];
     sc.groups.push(group);
     layoutStuntGroup(group, sc);
@@ -872,7 +888,8 @@
     var sc = t.sc, id = t.id, pos = sc.positions[id];
     var vx = pos.x/100*VB_W, vy = pos.y/100*VB_H;
     var part = partOf(id);
-    var hue = hueVar(part, PART_DEFS);
+    var mForColor = member(id);
+    var fillColor = (mForColor && mForColor.color) ? mForColor.color : 'var('+hueVar(part, PART_DEFS)+')';
     var selected = ui.selectedIds.indexOf(id)>=0;
     var g = groupContaining(sc, id);
     var badge = '';
@@ -895,7 +912,7 @@
     var nm = memberName(id);
     return '<g class="koma" data-member-id="'+id+'" data-group-id="'+(g?g.id:'')+'" transform="translate('+vx+','+vy+')">' +
       groupRing + ring +
-      '<circle r="'+r+'" style="fill:var('+hue+');stroke:var(--surface);stroke-width:2;"></circle>' +
+      '<circle r="'+r+'" style="fill:'+fillColor+';stroke:var(--surface);stroke-width:2;"></circle>' +
       '<text y="4" text-anchor="middle" font-size="'+(13*scale)+'" font-weight="700" style="fill:#fff;font-family:Manrope,sans-serif;pointer-events:none;">'+escapeHtml(nm.length>3?nm.slice(0,3):nm)+'</text>' +
       badge +
       '</g>';
@@ -965,19 +982,42 @@
     Object.keys(scene.positions).forEach(function(id){
       if(!prev.positions[id] || !prev.presence[id]) return;
       var a = prev.positions[id], b = scene.positions[id];
+      var skill = b.tumbleSkill;
+      var dash = skill ? '7 3 1 3' : '4 4';
+      var lineColor = skill ? 'var(--hue-rust)' : 'var(--text-muted)';
       var trace = (scene.useActualPath && b.path && b.path.length>1) ? b.path : null;
       if(trace){
         var d = 'M ' + trace.map(function(p){ return (p.x/100*VB_W)+' '+(p.y/100*VB_H); }).join(' L ');
-        out.push('<path class="motion-path" data-member-id="'+id+'" d="'+d+'" fill="none" style="stroke:var(--text-muted);stroke-width:1.5;stroke-dasharray:4 4;opacity:.55;" marker-end="url(#arrow)"></path>');
+        out.push('<path class="motion-path" data-member-id="'+id+'" d="'+d+'" fill="none" style="stroke:'+lineColor+';stroke-width:1.5;stroke-dasharray:'+dash+';opacity:.65;" marker-end="url(#arrow)"></path>');
       } else {
         var ax=a.x/100*VB_W, ay=a.y/100*VB_H, bx=b.x/100*VB_W, by=b.y/100*VB_H;
         if(Math.abs(ax-bx)<1 && Math.abs(ay-by)<1) return;
-        out.push('<line class="motion-path" data-member-id="'+id+'" x1="'+ax+'" y1="'+ay+'" x2="'+bx+'" y2="'+by+'" style="stroke:var(--text-muted);stroke-width:1.5;stroke-dasharray:4 4;opacity:.55;" marker-end="url(#arrow)"></line>');
+        out.push('<line class="motion-path" data-member-id="'+id+'" x1="'+ax+'" y1="'+ay+'" x2="'+bx+'" y2="'+by+'" style="stroke:'+lineColor+';stroke-width:1.5;stroke-dasharray:'+dash+';opacity:.65;" marker-end="url(#arrow)"></line>');
+      }
+      if(skill && TUMBLE_SKILLS[skill]){
+        var lx = b.x/100*VB_W, ly = b.y/100*VB_H - 34;
+        out.push('<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--hue-rust);font-family:Manrope,sans-serif;pointer-events:none;">'+escapeHtml(TUMBLE_SKILLS[skill])+'</text>');
       }
     });
     return out.join('');
   }
 
+  function renderStuntBadges(scene){
+    var groups = (scene.groups||[]).filter(function(g){ return g.type==='stunt' && g.memberIds.length; });
+    return groups.map(function(g){
+      var ids = g.memberIds.filter(function(id){ return scene.positions[id]; });
+      if(!ids.length) return '';
+      var c = centroidOf(ids, scene);
+      var t = STUNT_TYPES[g.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
+      var picto = STUNT_PICTOS[g.stuntType] || STUNT_PICTOS[STUNT_TYPE_ORDER[0]];
+      var vx = c.x/100*VB_W, vy = c.y/100*VB_H - (t.topOffset||6)/100*VB_H - 46;
+      return '<g transform="translate('+(vx-14)+','+vy+')" pointer-events="none">' +
+        '<rect width="28" height="40" rx="6" style="fill:var(--surface);stroke:var(--border);stroke-width:1;opacity:.92;"></rect>' +
+        '<g transform="translate(4,3)">'+picto+'</g>' +
+        '<text x="14" y="37" text-anchor="middle" font-size="7" font-weight="700" style="fill:var(--text-muted);font-family:Manrope,sans-serif;">'+escapeHtml(t.label)+'</text>' +
+      '</g>';
+    }).join('');
+  }
   function renderStageSvg(scene, opts){
     opts = opts || {};
     var mini = !!opts.mini;
@@ -989,6 +1029,7 @@
       els.push(renderKomaSvg({ sc:scene, id:m.id }));
     });
     body.push(els.join(''));
+    if(!mini) body.push(renderStuntBadges(scene));
     var cls = 'stage-svg' + (mini ? '' : ' stage-main');
     return '<svg class="'+cls+'" viewBox="0 0 '+VB_W+' '+VB_H+'" data-scene-id="'+scene.id+'">'+body.join('')+'</svg>';
   }
@@ -1098,7 +1139,7 @@
   function createProject(opts){
     var n = Math.max(1, Math.min(60, opts.memberCount||8));
     var members = [];
-    for(var i=1;i<=n;i++){ members.push({ id:uid('m'), name:'メンバー'+i, part:'other' }); }
+    for(var i=1;i<=n;i++){ members.push({ id:uid('m'), name:'メンバー'+i, part:'other', color:nextKomaColor(i-1) }); }
     var presence = {}; members.forEach(function(m){ presence[m.id]=true; });
     var scene1 = {
       id:uid('sc'), name:'シーン1', section:'opening', color:SECTION_DEFS.opening.color, timeLabel:'', startSec:null,
@@ -1220,6 +1261,10 @@
     }
     var markA = (cs && cs.markA!=null) ? '<div class="tl-mark a" style="left:'+(cs.markA*zoom)+'px"><span>①</span></div>' : '';
     var markB = (cs && cs.markB!=null) ? '<div class="tl-mark b" style="left:'+(cs.markB*zoom)+'px"><span>②</span></div>' : '';
+    var sceneMarks = state.scenes.map(function(s){
+      if(s.startSec==null) return '';
+      return '<div class="tl-scene-mark" style="left:'+(s.startSec*zoom)+'px" title="'+escapeHtml(s.name||'')+'"></div>';
+    }).join('');
     return '<div class="tl-wrap">' +
       '<div class="tl-toolbar">' +
         (leftExtra||'') +
@@ -1231,11 +1276,18 @@
       '</div>' +
       '<div class="tl-scroll" id="tlScroll">' +
         '<div class="tl-track" id="tlTrack" style="width:'+w+'px;'+gridBg+'">' +
-          overlayGrid + labels + markA + markB +
+          overlayGrid + labels + sceneMarks + markA + markB +
           '<div class="tl-playhead" id="tlPlayhead" style="left:'+(cur*zoom)+'px"></div>' +
           '<div class="tl-tooltip" id="tlTooltip" style="left:'+(cur*zoom)+'px;display:none;"></div>' +
         '</div>' +
       '</div>' +
+    '</div>';
+  }
+  function renderTransportRow(){
+    return '<div class="transport-row">' +
+      '<button class="btn small ghost icon" id="skipBackBtn" type="button" title="10秒戻る">⏪10</button>' +
+      '<button class="btn small" id="audioPlayBtn">'+(playbackIsPaused()?'▶ 再生':'❚❚ 一時停止')+'</button>' +
+      '<button class="btn small ghost icon" id="skipFwdBtn" type="button" title="10秒進む">10⏩</button>' +
     '</div>';
   }
   function renderCountSplitBox(dur){
@@ -1295,7 +1347,7 @@
           '<div id="ytPlaceholder" style="width:100%;height:44px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;">音声のみ再生中（動画は非表示）</div>'
           : '<div id="ytPlaceholder" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;"></div>') +
         renderTimeline(ytCur, ytDur, '<button class="btn small ghost" id="ytAudioOnlyBtn" type="button">'+(ui.ytAudioOnly?'動画を表示':'音だけ表示')+'</button>') +
-        '<button class="btn small" id="audioPlayBtn">'+(playbackIsPaused()?'▶ 再生':'❚❚ 一時停止')+'</button>' +
+        renderTransportRow() +
         '<button class="btn small primary" id="audioAddSceneBtn">+ この位置にシーン追加</button>' +
         renderCountSplitBox(ytDur) +
         '<button class="btn small ghost" id="ytChangeBtn">動画を変更</button>' +
@@ -1313,7 +1365,7 @@
       '<div class="audio-name">'+escapeHtml(state.audio.name||'未選択')+'</div>' +
       (has ? (
         renderTimeline(cur, dur) +
-        '<button class="btn small" id="audioPlayBtn">'+(AUDIO_EL.paused?'▶ 再生':'❚❚ 一時停止')+'</button>' +
+        renderTransportRow() +
         '<button class="btn small primary" id="audioAddSceneBtn">+ この位置にシーン追加</button>' +
         renderCountSplitBox(dur) +
         '<button class="btn small danger ghost" id="audioRemoveBtn">音源を削除</button>'
@@ -1346,9 +1398,9 @@
       '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+'</div>' +
       '<div class="pills-row">'+state.members.map(function(m){
         var on = !!sc.presence[m.id];
-        var hue = hueVar(m.part||'other', PART_DEFS);
+        var dotColor = m.color || ('var('+hueVar(m.part||'other', PART_DEFS)+')');
         return '<button type="button" class="pill'+(on?'':' off')+'" data-act="toggle-presence" data-id="'+m.id+'">' +
-          '<span class="dot" style="background:var('+hue+');"></span>'+escapeHtml(m.name)+'</button>';
+          '<span class="dot" style="background:'+dotColor+';"></span>'+escapeHtml(m.name)+'</button>';
       }).join('')+'</div>' +
     '</div>';
   }
@@ -1403,6 +1455,15 @@
         out.push('<p class="empty-hint">このコマは「'+escapeHtml(groupLabel(g))+'」の一員です。</p>');
         out.push('<button class="btn small" data-act="open-drawer" data-gid="'+g.id+'" style="width:100%;">スタンツ構成を編集</button>');
       }
+      var posForSel = sc.positions[selIds[0]];
+      var curSkill = (posForSel && posForSel.tumbleSkill) || '';
+      out.push('<hr class="divider">');
+      out.push('<h2 style="font-size:12px;margin:0;">タンブリング移動</h2>');
+      out.push('<p class="empty-hint">前シーンからの移動をタンブリングにする場合、技を選択すると移動線が一点鎖線になり、技名が表示されます。</p>');
+      out.push('<select id="tumbleSkillSelect" style="width:100%;border:1px solid var(--border);background:var(--surface);padding:6px 8px;border-radius:7px;">' +
+        '<option value="">なし</option>' +
+        TUMBLE_SKILL_ORDER.map(function(k){ return '<option value="'+k+'" '+(curSkill===k?'selected':'')+'>'+TUMBLE_SKILLS[k]+'</option>'; }).join('') +
+      '</select>');
     }
     out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">整列</h2>');
@@ -1460,6 +1521,7 @@
     var rows = state.members.map(function(m){
       var opts = PART_ORDER.map(function(k){ return '<option value="'+k+'" '+(m.part===k?'selected':'')+'>'+PART_DEFS[k].label+'</option>'; }).join('');
       return '<div class="roster-row" data-id="'+m.id+'">' +
+        '<input type="color" data-act="member-color" value="'+escapeHtml(m.color||'#8d8698')+'" title="コマの色">' +
         '<input type="text" data-act="member-name" value="'+escapeHtml(m.name)+'">' +
         '<select data-act="member-part">'+opts+'</select>' +
         '<button class="btn small danger ghost icon" data-act="member-del" data-id="'+m.id+'">×</button>' +
@@ -1855,6 +1917,14 @@
       resizer.addEventListener('pointercancel', function(){ dragging=false; resizer.classList.remove('active'); });
     })();
     on('audioPlayBtn','click', function(){ playbackTogglePlay(); });
+    on('skipBackBtn','click', function(){
+      var t = Math.max(0, playbackTime()-10);
+      playbackSeek(t); updateTimelineUI(t, playbackDuration());
+    });
+    on('skipFwdBtn','click', function(){
+      var t = Math.min(playbackDuration(), playbackTime()+10);
+      playbackSeek(t); updateTimelineUI(t, playbackDuration());
+    });
     on('ytAudioOnlyBtn','click', function(){ ui.ytAudioOnly = !ui.ytAudioOnly; render(); });
     on('tlZoomOut','click', function(){ ui.tlZoom = Math.max(8, (ui.tlZoom||60)/1.5); render(); });
     on('tlZoomIn','click', function(){ ui.tlZoom = Math.min(600, (ui.tlZoom||60)*1.5); render(); });
@@ -1945,7 +2015,7 @@
     });
     onAll('[data-act="arr-row"]','click', function(){ arrangeRow(selectedPresentIds(), currentScene()); });
     onAll('[data-act="arr-col"]','click', function(){ arrangeColumn(selectedPresentIds(), currentScene()); });
-    onAll('[data-act="arr-stunt"]','click', function(){ arrangeStunt(selectedPresentIds(), currentScene(), 'normal'); });
+    onAll('[data-act="arr-stunt"]','click', function(){ arrangeStunt(selectedPresentIds(), currentScene(), STUNT_TYPE_ORDER[0]); });
     onAll('[data-act="arr-group"]','click', function(){ toggleGroup(selectedPresentIds(), currentScene()); });
     onAll('[data-act="sel-clear"]','click', function(){ ui.selectedIds=[]; render(); });
 
@@ -1960,7 +2030,7 @@
       pushHistory();
       var n = state.members.length+1;
       var id = uid('m');
-      state.members.push({ id:id, name:'新規'+n, part:'other' });
+      state.members.push({ id:id, name:'新規'+n, part:'other', color:nextKomaColor(state.members.length) });
       currentScene().presence[id] = true;
       currentScene().positions[id] = { x:50, y:50 };
       markDirty(); render();
@@ -1983,9 +2053,18 @@
     onAll('[data-act="group-toggle"]','click', function(){ toggleGroup(selectedPresentIds(), currentScene()); });
     onAll('[data-act="apply-stunt"]','click', function(){
       var sel = document.getElementById('stuntTypeSelect');
-      arrangeStunt(selectedPresentIds(), currentScene(), sel?sel.value:'normal');
+      arrangeStunt(selectedPresentIds(), currentScene(), sel?sel.value:STUNT_TYPE_ORDER[0]);
     });
     onAll('[data-act="open-drawer"]','click', function(){ ui.stuntDrawerGroupId=this.getAttribute('data-gid'); render(); });
+    on('tumbleSkillSelect','change', function(){
+      var sc = currentScene();
+      var id = ui.selectedIds[0];
+      if(!id || !sc.positions[id]) return;
+      pushHistory();
+      if(this.value) sc.positions[id].tumbleSkill = this.value;
+      else delete sc.positions[id].tumbleSkill;
+      markDirty(); render();
+    });
     onAll('[data-act="align-cx"]','click', function(){ alignCenterX(selectedPresentIds(), currentScene()); });
     onAll('[data-act="align-cy"]','click', function(){ alignCenterY(selectedPresentIds(), currentScene()); });
     onAll('[data-act="align-eq"]','click', function(){ equalizeSpacing(selectedPresentIds(), currentScene()); });
@@ -2033,11 +2112,16 @@
     });
 
     /* roster tab */
-    on('memberAddBtn','click', function(){ pushHistory(); state.members.push({ id:uid('m'), name:'新しいメンバー', part:'other' }); markDirty(); render(); });
+    on('memberAddBtn','click', function(){ pushHistory(); state.members.push({ id:uid('m'), name:'新しいメンバー', part:'other', color:nextKomaColor(state.members.length) }); markDirty(); render(); });
     onAll('[data-act="member-name"]','change', function(){
       pushHistory();
       var id=this.closest('.roster-row').getAttribute('data-id');
       var m=member(id); if(m){ m.name=this.value; markDirty(); render(); }
+    });
+    onAll('[data-act="member-color"]','change', function(){
+      pushHistory();
+      var id=this.closest('.roster-row').getAttribute('data-id');
+      var m=member(id); if(m){ m.color=this.value; markDirty(); render(); }
     });
     onAll('[data-act="member-part"]','change', function(){
       pushHistory();
@@ -2055,7 +2139,7 @@
       pushHistory();
       var ta=document.getElementById('bulkNames');
       var lines=ta.value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
-      lines.forEach(function(n){ state.members.push({ id:uid('m'), name:n, part:'other' }); });
+      lines.forEach(function(n){ state.members.push({ id:uid('m'), name:n, part:'other', color:nextKomaColor(state.members.length) }); });
       ta.value=''; markDirty(); render();
     });
 
