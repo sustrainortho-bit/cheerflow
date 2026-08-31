@@ -286,6 +286,8 @@
 
   .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -374,6 +376,28 @@
   if(!state.audio.sourceType) state.audio.sourceType = state.audio.dataUrl ? 'file' : 'file';
 
   var hasArtifactApi = !!(window.claude && window.claude.use);
+
+  /* ---------- Firebase (クラウド保存・共有リンク用) ---------- */
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDyO6em-gCsvFMLEmz87KqQwEKOzfGkLtE",
+    authDomain: "cheerflow-app.firebaseapp.com",
+    projectId: "cheerflow-app",
+    storageBucket: "cheerflow-app.firebasestorage.app",
+    messagingSenderId: "1070982746205",
+    appId: "1:1070982746205:web:90f6c87ff1a8ad533afdb4"
+  };
+  var cfDb = null;
+  try{
+    if(window.firebase && firebase.initializeApp){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      cfDb = firebase.firestore();
+    }
+  }catch(e){ cfDb = null; }
+  var cloudProjectId = (function(){
+    var m = window.location.search.match(/[?&]p=([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : null;
+  })();
+
   function scheduleLocalSave(){
     if(!state.hasProject) return;
     if(scheduleLocalSave._t) clearTimeout(scheduleLocalSave._t);
@@ -971,13 +995,22 @@
 
   function saveStatusText(){
     if(ui.isReadOnly) return '閲覧専用';
-    if(!hasArtifactApi) return ui.dirty ? 'この端末に自動保存中…' : 'この端末に保存済み';
-    if(ui.saveStatus==='saving') return '保存中…';
-    if(ui.saveStatus==='saved') return '保存済み・'+fmtTime(state.updatedAt);
-    if(ui.saveStatus==='error') return '保存に失敗しました';
-    if(ui.saveStatus==='unavailable') return '保存機能は利用できません';
-    if(state.updatedAt) return (ui.dirty?'未保存の変更あり・':'最終保存 ') + fmtTime(state.updatedAt);
-    return ui.dirty ? '未保存の変更があります' : '未保存';
+    if(hasArtifactApi){
+      if(ui.saveStatus==='saving') return '保存中…';
+      if(ui.saveStatus==='saved') return '保存済み・'+fmtTime(state.updatedAt);
+      if(ui.saveStatus==='error') return '保存に失敗しました';
+      if(ui.saveStatus==='unavailable') return '保存機能は利用できません';
+      if(state.updatedAt) return (ui.dirty?'未保存の変更あり・':'最終保存 ') + fmtTime(state.updatedAt);
+      return ui.dirty ? '未保存の変更があります' : '未保存';
+    }
+    if(cfDb){
+      if(ui.saveStatus==='saving') return 'クラウドに保存中…';
+      if(ui.saveStatus==='saved') return cloudProjectId ? 'クラウドに保存済み・共有リンク有効' : 'この端末に保存済み';
+      if(ui.saveStatus==='error') return 'クラウド保存に失敗（この端末には保存済み）';
+      if(ui.saveStatus==='toolarge') return '音声ファイルが大きすぎて共有できません（YouTube推奨・この端末には保存済み）';
+      return ui.dirty ? '未保存の変更があります' : (cloudProjectId ? 'クラウドに保存済み' : 'この端末に保存済み');
+    }
+    return ui.dirty ? 'この端末に自動保存中…' : 'この端末に保存済み';
   }
 
   /* ---------------- Home screen ---------------- */
@@ -1107,7 +1140,10 @@
           '<div class="grp-label">共有</div>' +
           '<button data-act="exp-share-link">共有リンクをコピー（閲覧用）</button>' +
           '<button data-act="exp-collab-link">共同編集リンクについて</button>'
-        ) : '') +
+        ) : (cfDb && cloudProjectId ? (
+          '<div class="grp-label">共有</div>' +
+          '<button data-act="exp-share-link">共有リンクをコピー</button>'
+        ) : '')) +
       '</div>'
     ) : '';
     return '<header class="editor-header">' +
@@ -1123,7 +1159,7 @@
         exportMenu +
       '</div>' +
       '<button class="btn small'+(ui.sidebarOpen?' on':'')+'" id="menuTabBtn">メニュー</button>' +
-      '<button class="btn small primary" id="saveBtn" type="button" '+(ui.isReadOnly?'disabled':'')+'>'+(hasArtifactApi?'保存して共有':'保存')+'</button>' +
+      '<button class="btn small primary" id="saveBtn" type="button" '+(ui.isReadOnly?'disabled':'')+'>'+((hasArtifactApi||cfDb)?'保存して共有':'保存')+'</button>' +
     '</header>';
   }
 
@@ -2207,31 +2243,82 @@
   }
   function handleSave(){
     if(ui.isReadOnly) return;
-    if(!hasArtifactApi){
-      try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
-      ui.dirty=false; render();
+    if(hasArtifactApi){
+      ui.saveStatus='saving'; render();
+      window.claude.use('artifact').then(function(artifact){
+        if(!artifact){ ui.saveStatus='unavailable'; render(); return; }
+        state.updatedAt = new Date().toISOString();
+        var html = buildFullHtml(state);
+        artifact.publish(html).then(function(){
+          ui.saveStatus='saved'; ui.dirty=false; render();
+        }, function(err){
+          if(err && (err.code==='not_writer' || err.code==='not_granted')){
+            ui.isReadOnly = true; ui.saveStatus='idle'; render();
+          } else if(err && err.code==='conflict'){
+            ui.saveStatus='idle'; render();
+          } else {
+            ui.saveStatus='error'; render();
+          }
+        });
+      }, function(){ ui.saveStatus='unavailable'; render(); });
+      return;
+    }
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+    if(!cfDb){ ui.dirty=false; render(); return; }
+    state.updatedAt = new Date().toISOString();
+    var payload;
+    try{ payload = JSON.parse(JSON.stringify(state)); }catch(e){ payload = null; }
+    if(!payload || new Blob([JSON.stringify(payload)]).size > 900000){
+      ui.dirty=false; ui.saveStatus='toolarge'; render();
       return;
     }
     ui.saveStatus='saving'; render();
-    window.claude.use('artifact').then(function(artifact){
-      if(!artifact){ ui.saveStatus='unavailable'; render(); return; }
-      state.updatedAt = new Date().toISOString();
-      var html = buildFullHtml(state);
-      artifact.publish(html).then(function(){
-        ui.saveStatus='saved'; ui.dirty=false; render();
-      }, function(err){
-        if(err && (err.code==='not_writer' || err.code==='not_granted')){
-          ui.isReadOnly = true; ui.saveStatus='idle'; render();
-        } else if(err && err.code==='conflict'){
-          ui.saveStatus='idle'; render();
-        } else {
-          ui.saveStatus='error'; render();
-        }
-      });
-    }, function(){ ui.saveStatus='unavailable'; render(); });
+    var isNew = !cloudProjectId;
+    var docId = cloudProjectId || cfDb.collection('projects').doc().id;
+    cfDb.collection('projects').doc(docId).set({
+      state: payload,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      cloudProjectId = docId;
+      if(isNew){
+        try{
+          var url = new URL(window.location.href);
+          url.searchParams.set('p', docId);
+          history.replaceState(null, '', url.toString());
+        }catch(e){}
+      }
+      ui.dirty=false; ui.saveStatus='saved'; render();
+    }).catch(function(){
+      ui.dirty=false; ui.saveStatus='error'; render();
+    });
   }
 
-  render();
+  function applyLoadedState(s){
+    state = s;
+    if(state.hasProject===undefined) state.hasProject = !!(state.scenes && state.scenes.length);
+    state.stage = state.stage || defaultStage();
+    state.audio = state.audio || { dataUrl:'', name:'', sourceType:'file', youtubeUrl:'' };
+    if(!state.audio.sourceType) state.audio.sourceType = state.audio.dataUrl ? 'file' : 'file';
+    if(state.audio.dataUrl) AUDIO_EL.src = state.audio.dataUrl;
+  }
+
+  if(cloudProjectId && cfDb){
+    root.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted)">読み込み中…</div>';
+    cfDb.collection('projects').doc(cloudProjectId).get().then(function(doc){
+      if(doc.exists && doc.data() && doc.data().state){
+        applyLoadedState(doc.data().state);
+      } else {
+        cloudProjectId = null;
+        try{ history.replaceState(null, '', window.location.pathname); }catch(e){}
+      }
+      render();
+    }).catch(function(){
+      cloudProjectId = null;
+      render();
+    });
+  } else {
+    render();
+  }
 })();
 </script>
 </body>

@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 認証なしのリンク共有モデル：URLの projectId (Firestoreのドキュメント自動採番ID、
+    // 事実上推測不可能な文字列) を知っている人は誰でも読み書きできる。
+    // Googleドキュメントの「リンクを知っている全員が編集可」と同じセキュリティモデル。
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['state', 'updatedAt']);
+    }
+  }
+}
