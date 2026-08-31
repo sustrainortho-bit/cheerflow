@@ -42,7 +42,7 @@ cheerflow.html   # アプリ本体（これ1ファイルで完結。ビルド工
 - **音楽同期**：音声ファイル or YouTube埋め込みで再生し、シーンと紐付け。カウント（8カウント等）ごとのメモ欄あり
 - **プレゼンモード**：フルスクリーンで隊形を1つずつ再生・確認
 - **印刷（エクスポート）**：シーンごとに印刷用ページを生成
-- **保存**：Claude Artifactの`artifact`capability経由で自己保存（`window.claude.use('artifact')`）。capabilityが使えない環境ではlocalStorageにフォールバック
+- **保存**：Claude Artifact環境では`artifact`capability経由（`window.claude.use('artifact')`）。GitHub Pages版ではFirebase Firestoreへのクラウド保存＋共有リンク発行（詳細は下記「データ永続化（Firebase）」参照）。どちらも使えない場合はlocalStorageのみにフォールバック
 - **Undo/Redo**：最大40件の履歴
 
 ### 未確認・要オーナー確認事項
@@ -64,7 +64,31 @@ cheerflow.html   # アプリ本体（これ1ファイルで完結。ビルド工
 
 - `cheerflow`リポジトリをpublicに変更し、GitHub Pagesを有効化した
 - 公開URL: https://sustrainortho-bit.github.io/cheerflow/ （`index.html`が`cheerflow.html`へリダイレクト。直接開く場合は https://sustrainortho-bit.github.io/cheerflow/cheerflow.html ）
-- 注意：Pages上のバージョンは`git push`した時点のコードがそのまま公開される。ローカルのApp内保存（`window.claude.use('artifact')`）はArtifact環境専用の機能なので、Pages版では動作しない（保存はlocalStorageへのフォールバックのみになる）。将来的にPages版でのデータ永続化方法（サーバー保存など）を検討する必要があるかもしれない
+- 注意：Pages上のバージョンは`git push`した時点のコードがそのまま公開される
+
+### 完了：データ永続化 / 共有リンク機能（2026-08-31）
+
+**方式**：Firebase Firestoreへのクラウド保存。他アプリ（[tasksync-hub](https://github.com/sustrainortho-bit/tasksync)がFirebase専用プロジェクトを持つのと同じ慣習で、CheerFlow専用のFirebaseプロジェクト`cheerflow-app`を新規作成した。
+
+| 項目 | 内容 |
+|---|---|
+| Firebaseプロジェクト | `cheerflow-app`（https://console.firebase.google.com/project/cheerflow-app/overview） |
+| DB | Firestore Native、リージョン`asia-northeast1` |
+| コレクション | `projects/{自動採番ID}` — 1ドキュメント＝1プロジェクトの`state`全体（JSON） |
+| ルール定義 | [firestore.rules](firestore.rules)（`firebase deploy --only firestore:rules --project cheerflow-app`でデプロイ） |
+| 設定ファイル | [firebase.json](firebase.json) |
+
+**セキュリティモデル（重要・要認識共有）**：認証なし。「URLにあるプロジェクトID（Firestoreの自動採番ID、事実上推測不可能な文字列）を知っている人は誰でも読み書きできる」という、Googleドキュメントの「リンクを知っている全員が編集可」と同じモデル。ユーザー登録・ログイン機能はまだない。チームの外にリンクを流出させないよう運用でカバーする必要がある。
+
+**動作の流れ**：
+1. 新規プロジェクトはまずlocalStorage（この端末のみ）に保存される（今まで通り）
+2. 「保存して共有」ボタンを押すと、初回はFirestoreに新規ドキュメントを作成し、URLに`?p=<ドキュメントID>`を付与（`history.replaceState`、ページ遷移なし）。2回目以降は同じドキュメントを上書き
+3. `?p=<id>`付きのURLを開くと、ページ読み込み時にFirestoreから該当プロジェクトを取得し、その内容で画面を初期化する（ローカルのlocalStorageの内容より優先される）
+4. エクスポートメニューの「共有リンクをコピー」で、現在のURL（`?p=`付き）をコピーできる
+
+**既知の制約**：
+- 音声ファイルをアップロードする形式（YouTube URLではなくファイル直接アップロード）の場合、base64化した音声データが`state`に丸ごと入るため、Firestoreの1ドキュメント1MiB上限を超えるとクラウド保存できない（保存ボタンで「音声ファイルが大きすぎて共有できません」と表示され、この端末へのlocalStorage保存のみ行われる）。YouTube URL方式なら問題にならない
+- リアルタイム共同編集（Googleドキュメントのような同時編集の自動反映）ではない。「保存して共有」ボタンを押した時点のスナップショットが同期される方式
 
 ## 開発の進め方
 
