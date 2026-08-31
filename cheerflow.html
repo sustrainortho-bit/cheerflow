@@ -140,7 +140,7 @@
   }
 
   .editor-body{ flex:1; min-height:0; display:grid; grid-template-columns:var(--audio-panel-w,340px) 6px 1fr; overflow:hidden; }
-  .editor-body.with-sidebar{ grid-template-columns:var(--audio-panel-w,340px) 6px 1fr 1fr; }
+  .editor-body.with-sidebar{ grid-template-columns:var(--audio-panel-w,340px) 6px 2fr 1fr; }
   @media (max-width:920px){
     .editor-body{ grid-template-columns:1fr; grid-auto-rows:auto; overflow:auto; }
     .editor-body.with-sidebar{ grid-template-columns:1fr; }
@@ -219,6 +219,10 @@
   .roster-row input{ flex:1; border:1px solid var(--border); background:var(--surface); padding:6px 8px; border-radius:7px; }
   .roster-row input[type="color"]{ flex:0 0 32px; width:32px; height:32px; padding:2px; }
   .roster-row select{ border:1px solid var(--border); background:var(--surface); padding:6px 8px; border-radius:7px; }
+  .stunt-list-row{ border:1px solid var(--border); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .stunt-list-row.active{ border-color:var(--accent); }
+  .stunt-list-head{ display:flex; align-items:center; justify-content:space-between; }
+  .stunt-list-head strong{ font-size:12px; }
 
   /* ---------- footer scene strip ---------- */
   .footer-strip{
@@ -325,19 +329,19 @@
     hands:   { label:'ハンズ',       short:'H', hue:'--hue-amber' }
   };
   var STUNT_TYPES = {
-    stand:         { label:'スタンド',           baseSpacing:4, spotterOffset:5, handsSpacing:7, topOffset:3 },
-    halfup:        { label:'ハーフアップ',       baseSpacing:4, spotterOffset:4, handsSpacing:7, topOffset:3 },
-    fullup:        { label:'フルアップ',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:6 },
-    extension:     { label:'エクステンション',   baseSpacing:4, spotterOffset:7, handsSpacing:8, topOffset:6 },
-    liberty:       { label:'リバティ',           baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
-    arabesque:     { label:'アラベスク',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
-    heel:          { label:'ヒール',             baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
-    scorpion:      { label:'スコーピオン',       baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
-    shoulderstand: { label:'ショルダースタンド', baseSpacing:4, spotterOffset:5, handsSpacing:7, topOffset:4 },
-    elevator:      { label:'エレベーター',       baseSpacing:4, spotterOffset:5, handsSpacing:8, topOffset:4 },
-    pyramid:       { label:'ピラミッド',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
-    sidebyside:    { label:'サイドサイ',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
-    stack:         { label:'スタック',           baseSpacing:3, spotterOffset:5, handsSpacing:6, topOffset:3 }
+    stand:         { label:'スタンド',           baseSpacing:5, spotterOffset:6, handsSpacing:8, topOffset:6 },
+    halfup:        { label:'ハーフアップ',       baseSpacing:5, spotterOffset:5, handsSpacing:8, topOffset:5 },
+    fullup:        { label:'フルアップ',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:8 },
+    extension:     { label:'エクステンション',   baseSpacing:5, spotterOffset:8, handsSpacing:9, topOffset:8 },
+    liberty:       { label:'リバティ',           baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
+    arabesque:     { label:'アラベスク',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
+    heel:          { label:'ヒール',             baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
+    scorpion:      { label:'スコーピオン',       baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
+    shoulderstand: { label:'ショルダースタンド', baseSpacing:5, spotterOffset:6, handsSpacing:8, topOffset:6 },
+    elevator:      { label:'エレベーター',       baseSpacing:5, spotterOffset:6, handsSpacing:9, topOffset:6 },
+    pyramid:       { label:'ピラミッド',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
+    sidebyside:    { label:'サイドサイ',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
+    stack:         { label:'スタック',           baseSpacing:5, spotterOffset:6, handsSpacing:7, topOffset:5 }
   };
   var STUNT_TYPE_ORDER = ['stand','halfup','fullup','extension','liberty','arabesque','heel','scorpion','shoulderstand','elevator','pyramid','sidebyside','stack'];
 
@@ -388,7 +392,7 @@
   function defaultStage(){
     return { widthM:8, depthM:6, frontCount:9, frontLabels:'', depthCount:6, depthLabels:'',
       showGrid:true, showFrontNumbers:true, showDepthNumbers:false, showCenter:true, showDiagonal:false, showThirds:false,
-      bg:{ dataUrl:'', opacity:60 }, komaScale:100, snapGrid:false };
+      bg:{ dataUrl:'', opacity:60 }, komaScale:100, snapGrid:false, showRoleBadges:true };
   }
   function emptyState(){
     return {
@@ -905,7 +909,7 @@
     var selected = ui.selectedIds.indexOf(id)>=0;
     var g = groupContaining(sc, id);
     var badge = '';
-    if(g && g.type==='stunt'){
+    if(g && g.type==='stunt' && state.stage.showRoleBadges!==false){
       var roleKey = null;
       if(g.composition.top===id) roleKey='top';
       else if((g.composition.base||[]).indexOf(id)>=0) roleKey='base';
@@ -1431,13 +1435,15 @@
     return '<div class="stage-panel">' +
       selToolbar +
       '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+'</div>' +
-      '<div class="pills-row">'+state.members.map(function(m){
-        var on = !!sc.presence[m.id];
-        var dotColor = m.color || ('var('+hueVar(m.part||'other', PART_DEFS)+')');
-        return '<button type="button" class="pill'+(on?'':' off')+'" data-act="toggle-presence" data-id="'+m.id+'">' +
-          '<span class="dot" style="background:'+dotColor+';"></span>'+escapeHtml(m.name)+'</button>';
-      }).join('')+'</div>' +
     '</div>';
+  }
+  function renderPresenceRow(sc){
+    return '<div class="pills-row">'+state.members.map(function(m){
+      var on = !!sc.presence[m.id];
+      var dotColor = m.color || ('var('+hueVar(m.part||'other', PART_DEFS)+')');
+      return '<button type="button" class="pill'+(on?'':' off')+'" data-act="toggle-presence" data-id="'+m.id+'">' +
+        '<span class="dot" style="background:'+dotColor+';"></span>'+escapeHtml(m.name)+'</button>';
+    }).join('')+'</div>';
   }
 
   /* ---------------- Side panel (right, toggled by メニュー) ---------------- */
@@ -1464,6 +1470,9 @@
     out.push('<h2 style="font-size:12px;margin:0;">人数</h2>');
     out.push('<div class="headcount-row"><button class="btn small icon" data-act="hc-minus">−</button><span class="num mono">'+state.members.length+'人</span><button class="btn small icon" data-act="hc-plus">＋</button></div>');
     out.push('<hr class="divider">');
+    out.push('<h2 style="font-size:12px;margin:0;">出演メンバー（このシーン）</h2>');
+    out.push(renderPresenceRow(sc));
+    out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">配置のプリセット</h2>');
     out.push('<p class="empty-hint">選択中のコマ（未選択なら出演中の全員）に適用します。</p>');
     out.push('<div class="preset-grid">' +
@@ -1483,18 +1492,29 @@
     out.push('<select id="stuntTypeSelect" style="width:100%;border:1px solid var(--border);background:var(--surface);padding:6px 8px;border-radius:7px;">' +
       STUNT_TYPE_ORDER.map(function(k){ return '<option value="'+k+'">'+STUNT_TYPES[k].label+'</option>'; }).join('') +
     '</select>');
-    out.push('<button class="btn small primary" data-act="apply-stunt" style="width:100%;" '+(selIds.length<2?'disabled':'')+'>選択中をスタンツ隊列にする</button>');
+    out.push('<button class="btn small primary" data-act="apply-stunt" style="width:100%;" '+(selIds.length<2?'disabled':'')+'>選択中を新しいスタンツ隊列にする</button>');
+    var stuntGroups = stuntGroupsOf(sc);
+    if(stuntGroups.length){
+      out.push('<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">' +
+        stuntGroups.map(function(g, i){
+          var isSel = selIds.length && g.memberIds.indexOf(selIds[0])>=0 && selIds.every(function(id){ return g.memberIds.indexOf(id)>=0; }) && selIds.length===g.memberIds.length;
+          return '<div class="stunt-list-row'+(isSel?' active':'')+'">' +
+            '<div class="stunt-list-head"><strong>スタンツ'+(i+1)+'</strong>' +
+              '<button class="btn small ghost icon" type="button" data-act="stunt-list-select" data-gid="'+g.id+'" title="このスタンツを選択">◎</button>' +
+            '</div>' +
+            '<p class="empty-hint" style="margin:0;">'+escapeHtml(groupLabel(g))+'</p>' +
+            '<select data-act="stunt-list-type" data-gid="'+g.id+'" style="width:100%;border:1px solid var(--border);background:var(--surface);padding:5px 7px;border-radius:6px;">' +
+              STUNT_TYPE_ORDER.map(function(k){ return '<option value="'+k+'" '+(g.stuntType===k?'selected':'')+'>'+STUNT_TYPES[k].label+'</option>'; }).join('') +
+            '</select>' +
+            '<div style="display:flex;gap:6px;">' +
+              '<button class="btn small ghost" type="button" data-act="open-drawer" data-gid="'+g.id+'" style="flex:1;">構成を編集</button>' +
+              '<button class="btn small danger ghost" type="button" data-act="stunt-list-ungroup" data-gid="'+g.id+'" style="flex:1;">解除</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>');
+    }
     if(selIds.length===1){
-      var g = groupContaining(sc, selIds[0]);
-      if(g && g.type==='stunt'){
-        var curType = STUNT_TYPES[g.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
-        out.push('<p class="empty-hint">このコマは「'+escapeHtml(groupLabel(g))+'」の一員です。現在の技：<strong style="color:var(--text);">'+escapeHtml(curType.label)+'</strong></p>');
-        out.push('<select id="changeStuntTypeSelect" style="width:100%;border:1px solid var(--border);background:var(--surface);padding:6px 8px;border-radius:7px;">' +
-          STUNT_TYPE_ORDER.map(function(k){ return '<option value="'+k+'" '+(g.stuntType===k?'selected':'')+'>'+STUNT_TYPES[k].label+'</option>'; }).join('') +
-        '</select>');
-        out.push('<button class="btn small primary" data-act="change-stunt-type" style="width:100%;">この技に変更（構成は維持）</button>');
-        out.push('<button class="btn small" data-act="open-drawer" data-gid="'+g.id+'" style="width:100%;">スタンツ構成を編集</button>');
-      }
       var posForSel = sc.positions[selIds[0]];
       var curSkill = (posForSel && posForSel.tumbleSkill) || '';
       out.push('<hr class="divider">');
@@ -1589,6 +1609,9 @@
     out.push(toggleRow('showDepthNumbers','奥行きの位置番号', st.showDepthNumbers));
     out.push(toggleRow('showDiagonal','対角線', st.showDiagonal));
     out.push(toggleRow('showThirds','三分割線', st.showThirds));
+    out.push('<hr class="divider">');
+    out.push('<h2 style="font-size:12px;margin:0;">スタンツ表示</h2>');
+    out.push(toggleRow('showRoleBadges','役割バッジ（トップ/ベース等）を表示', st.showRoleBadges!==false));
     out.push('<hr class="divider">');
     out.push('<div class="field"><label for="frontCount">正面の位置番号の数</label><input type="number" id="frontCount" value="'+st.frontCount+'"></div>');
     out.push('<div class="field"><label for="frontLabels">正面ラベル（任意）</label><input type="text" id="frontLabels" value="'+escapeHtml(st.frontLabels||'')+'" placeholder="例: 2 1 0 1 2"></div>');
@@ -2097,12 +2120,22 @@
       arrangeStunt(selectedPresentIds(), currentScene(), sel?sel.value:STUNT_TYPE_ORDER[0]);
     });
     onAll('[data-act="open-drawer"]','click', function(){ ui.stuntDrawerGroupId=this.getAttribute('data-gid'); render(); });
-    onAll('[data-act="change-stunt-type"]','click', function(){
+    onAll('[data-act="stunt-list-select"]','click', function(){
       var sc = currentScene();
-      var id = ui.selectedIds[0];
-      var g = id ? groupContaining(sc, id) : null;
-      var sel = document.getElementById('changeStuntTypeSelect');
-      if(g && sel) changeStuntType(g, sc, sel.value);
+      var g = findGroupById(sc, this.getAttribute('data-gid'));
+      if(g){ ui.selectedIds = g.memberIds.slice(); render(); }
+    });
+    onAll('[data-act="stunt-list-type"]','change', function(){
+      var sc = currentScene();
+      var g = findGroupById(sc, this.getAttribute('data-gid'));
+      if(g) changeStuntType(g, sc, this.value);
+    });
+    onAll('[data-act="stunt-list-ungroup"]','click', function(){
+      var sc = currentScene();
+      var gid = this.getAttribute('data-gid');
+      pushHistory();
+      sc.groups = (sc.groups||[]).filter(function(g){ return g.id!==gid; });
+      markDirty(); render();
     });
     on('tumbleSkillSelect','change', function(){
       var sc = currentScene();
@@ -2199,7 +2232,7 @@
     bindField('depthCount', function(v){ pushHistory(); state.stage.depthCount=Math.max(1,parseInt(v,10)||6); });
     bindField('depthLabels', function(v){ pushHistory(); state.stage.depthLabels=v; });
     on('projectMemo','change', function(){ pushHistory(); state.projectMemo=this.value; markDirty(); render(); });
-    ['showGrid','showFrontNumbers','showDepthNumbers','showCenter','showDiagonal','showThirds'].forEach(function(key){
+    ['showGrid','showFrontNumbers','showDepthNumbers','showCenter','showDiagonal','showThirds','showRoleBadges'].forEach(function(key){
       on(key,'change', function(){ pushHistory(); state.stage[key]=this.checked; markDirty(); render(); });
     });
     on('bgOpacity','pointerdown', function(){ pushHistory(); });
