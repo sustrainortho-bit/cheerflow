@@ -52,8 +52,13 @@ cheerflow.html   # アプリ本体（これ1ファイルで完結。ビルド工
 
 ## 次の優先タスク（2026-08-31時点）
 
-1. **YouTube同期再生のバグ調査**：オーナーが自分のPCでローカルファイルを直接ブラウザで開いてYouTube URLを設定して確認したが、動画が表示されなかった。Claude ArtifactのCSP制限が原因ではなく（ローカルファイルでも再現）、コード側に実際のバグがある可能性が高い。`loadYoutubeVideo`まわり（1D行目付近、`extractYouTubeId`/`ensureYtApi`/`YT.Player`初期化）を次回詳しく調査すること。ブラウザの開発者コンソールのエラーも確認すると早い
-2. **公開デプロイ方針の決定**：オーナーの要望は「誰でもURLでアクセスできるようにしたい」。GitHub Pagesを使う場合、無料プランではリポジトリを公開（public）にする必要がある。現在`cheerflow`リポジトリは非公開（private）。公開に切り替えるかどうかはオーナー確認の上で実施すること（コードとアプリが誰でも見える状態になるため、実行前に必ず確認する）
+1. **YouTube同期再生のバグ調査**：オーナーが自分のPCでローカルファイルを直接ブラウザで開いてYouTube URLを設定して確認したが、動画が表示されなかった。Claude ArtifactのCSP制限が原因ではなく（ローカルファイルでも再現）、コード側に実際のバグがある可能性が高い。`loadYoutubeVideo`まわり（`extractYouTubeId`/`ensureYtApi`/`YT.Player`初期化）を次回詳しく調査すること。ブラウザの開発者コンソールのエラーも確認すると早い（未着手・最優先）
+
+### 完了：公開デプロイ（2026-08-31）
+
+- `cheerflow`リポジトリをpublicに変更し、GitHub Pagesを有効化した
+- 公開URL: https://sustrainortho-bit.github.io/cheerflow/ （`index.html`が`cheerflow.html`へリダイレクト。直接開く場合は https://sustrainortho-bit.github.io/cheerflow/cheerflow.html ）
+- 注意：Pages上のバージョンは`git push`した時点のコードがそのまま公開される。ローカルのApp内保存（`window.claude.use('artifact')`）はArtifact環境専用の機能なので、Pages版では動作しない（保存はlocalStorageへのフォールバックのみになる）。将来的にPages版でのデータ永続化方法（サーバー保存など）を検討する必要があるかもしれない
 
 ## 開発の進め方
 
