@@ -1785,6 +1785,7 @@
       var sc = findScene(sceneId);
       if(sc && sc.startSec!=null) playbackSeek(sc.startSec);
       render();
+      if(sc && sc.startSec!=null) updateTimelineUI(sc.startSec, playbackDuration());
     });
     onAll('[data-act="thumb-left"]','click', function(e){
       e.stopPropagation();
