@@ -1148,13 +1148,13 @@
       presence:presence, positions:{}, groups:[]
     };
     members.forEach(function(m){ scene1.positions[m.id] = {x:50,y:50}; });
-    autoArrangeAll(scene1);
     state = {
       hasProject:true, title:'新しいルーティン', members:members, scenes:[scene1], currentSceneId:scene1.id,
       stage: defaultStage(), projectMemo:'',
       audio: opts.audio || { dataUrl:'', name:'', sourceType:'file', youtubeUrl:'' },
       updatedAt:null
     };
+    autoArrangeAll(scene1);
     if(state.audio.dataUrl) AUDIO_EL.src = state.audio.dataUrl;
     ui.selectedIds=[]; ui.undoStack=[]; ui.redoStack=[]; ui.screen='editor';
     markDirty(); render();
