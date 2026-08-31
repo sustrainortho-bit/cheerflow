@@ -52,7 +52,13 @@ cheerflow.html   # アプリ本体（これ1ファイルで完結。ビルド工
 
 ## 次の優先タスク（2026-08-31時点）
 
-1. **YouTube同期再生のバグ調査**：オーナーが自分のPCでローカルファイルを直接ブラウザで開いてYouTube URLを設定して確認したが、動画が表示されなかった。Claude ArtifactのCSP制限が原因ではなく（ローカルファイルでも再現）、コード側に実際のバグがある可能性が高い。`loadYoutubeVideo`まわり（`extractYouTubeId`/`ensureYtApi`/`YT.Player`初期化）を次回詳しく調査すること。ブラウザの開発者コンソールのエラーも確認すると早い（未着手・最優先）
+### 解決済み：YouTube同期再生のバグ（2026-08-31）
+
+**原因**：コードのバグではなく、`file://`プロトコルでローカルHTMLを直接開いていたことが原因だった。YouTube IFrame Player APIはiframeとの通信に`postMessage`を使うが、`file://`で開いたページのoriginは`null`扱いになり、YouTube側との組み込み許可判定が正しく機能しない（ブラウザによっては無音で失敗し、映像が表示されないだけでエラーも出にくい）。
+
+**確認方法**：GitHub Pages公開後の https://sustrainortho-bit.github.io/cheerflow/ （https配信）で実際にブラウザ操作をエミュレートし、YouTube URLを設定→動画が正常に表示され、再生ボタンでの再生/一時停止の切り替えも正常に動作することを確認した。
+
+**結論**：https（または`http://localhost`のような通常オリジン）で配信されている限りYouTube同期再生は問題なく動作する。オーナーが今後ローカルで動作確認する際は、`file://`で直接開くのではなく、ローカルサーバー経由（例: `npx serve` や VSCodeのLive Server）で開くよう案内すること。
 
 ### 完了：公開デプロイ（2026-08-31）
 
