@@ -313,6 +313,10 @@
   var PART_ORDER = ['flyer','base','backspot','dancer','tumbler','other'];
   var KOMA_COLOR_PALETTE = ['#ff5c86','#5d9cf0','#3fce9f','#eeab52','#a68cf0','#e08a7c','#4fc3d9','#d9c24f','#7d8de0','#e069a6','#6bbf7a','#c08a6b'];
   function nextKomaColor(idx){ return KOMA_COLOR_PALETTE[idx % KOMA_COLOR_PALETTE.length]; }
+  function ensureMemberColors(s){
+    if(!s || !s.members) return;
+    s.members.forEach(function(m, i){ if(!m.color) m.color = nextKomaColor(i); });
+  }
 
   var STUNT_ROLES = {
     top:     { label:'トップ',       short:'T', hue:'--hue-pink' },
@@ -321,19 +325,19 @@
     hands:   { label:'ハンズ',       short:'H', hue:'--hue-amber' }
   };
   var STUNT_TYPES = {
-    stand:         { label:'スタンド',           baseSpacing:5, spotterOffset:7,  handsSpacing:10, topOffset:5 },
-    halfup:        { label:'ハーフアップ',       baseSpacing:5, spotterOffset:6,  handsSpacing:10, topOffset:4 },
-    fullup:        { label:'フルアップ',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:9 },
-    extension:     { label:'エクステンション',   baseSpacing:5, spotterOffset:10, handsSpacing:12, topOffset:9 },
-    liberty:       { label:'リバティ',           baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
-    arabesque:     { label:'アラベスク',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
-    heel:          { label:'ヒール',             baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
-    scorpion:      { label:'スコーピオン',       baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:8 },
-    shoulderstand: { label:'ショルダースタンド', baseSpacing:5, spotterOffset:8,  handsSpacing:10, topOffset:6 },
-    elevator:      { label:'エレベーター',       baseSpacing:5, spotterOffset:8,  handsSpacing:11, topOffset:6 },
-    pyramid:       { label:'ピラミッド',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:7 },
-    sidebyside:    { label:'サイドサイ',         baseSpacing:5, spotterOffset:9,  handsSpacing:11, topOffset:7 },
-    stack:         { label:'スタック',           baseSpacing:4, spotterOffset:7,  handsSpacing:9,  topOffset:5 }
+    stand:         { label:'スタンド',           baseSpacing:4, spotterOffset:5, handsSpacing:7, topOffset:3 },
+    halfup:        { label:'ハーフアップ',       baseSpacing:4, spotterOffset:4, handsSpacing:7, topOffset:3 },
+    fullup:        { label:'フルアップ',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:6 },
+    extension:     { label:'エクステンション',   baseSpacing:4, spotterOffset:7, handsSpacing:8, topOffset:6 },
+    liberty:       { label:'リバティ',           baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
+    arabesque:     { label:'アラベスク',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
+    heel:          { label:'ヒール',             baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
+    scorpion:      { label:'スコーピオン',       baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
+    shoulderstand: { label:'ショルダースタンド', baseSpacing:4, spotterOffset:5, handsSpacing:7, topOffset:4 },
+    elevator:      { label:'エレベーター',       baseSpacing:4, spotterOffset:5, handsSpacing:8, topOffset:4 },
+    pyramid:       { label:'ピラミッド',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
+    sidebyside:    { label:'サイドサイ',         baseSpacing:4, spotterOffset:6, handsSpacing:8, topOffset:5 },
+    stack:         { label:'スタック',           baseSpacing:3, spotterOffset:5, handsSpacing:6, topOffset:3 }
   };
   var STUNT_TYPE_ORDER = ['stand','halfup','fullup','extension','liberty','arabesque','heel','scorpion','shoulderstand','elevator','pyramid','sidebyside','stack'];
 
@@ -413,6 +417,7 @@
   state.stage = state.stage || defaultStage();
   state.audio = state.audio || { dataUrl:'', name:'', sourceType:'file', youtubeUrl:'' };
   if(!state.audio.sourceType) state.audio.sourceType = state.audio.dataUrl ? 'file' : 'file';
+  ensureMemberColors(state);
 
   var hasArtifactApi = !!(window.claude && window.claude.use);
 
@@ -805,6 +810,13 @@
     ui.selectedIds = ids.slice();
     markDirty(); render();
   }
+  function changeStuntType(g, sc, newType){
+    if(!g || !newType) return;
+    pushHistory();
+    g.stuntType = newType;
+    layoutStuntGroup(g, sc);
+    markDirty(); render();
+  }
   function toggleGroup(ids, sc){
     if(ids.length<2) return;
     pushHistory();
@@ -1002,19 +1014,41 @@
     return out.join('');
   }
 
-  function renderStuntBadges(scene){
-    var groups = (scene.groups||[]).filter(function(g){ return g.type==='stunt' && g.memberIds.length; });
-    return groups.map(function(g){
+  function stuntGroupsOf(scene){
+    return (scene.groups||[]).filter(function(g){ return g.type==='stunt' && g.memberIds.length; });
+  }
+  function groupBBoxVb(ids, scene){
+    var xs = [], ys = [];
+    ids.forEach(function(id){ var p = scene.positions[id]; if(p){ xs.push(p.x/100*VB_W); ys.push(p.y/100*VB_H); } });
+    if(!xs.length) return null;
+    return { x1:Math.min.apply(null,xs), x2:Math.max.apply(null,xs), y1:Math.min.apply(null,ys), y2:Math.max.apply(null,ys) };
+  }
+  function renderGroupOutlines(scene){
+    var pad = 34;
+    return stuntGroupsOf(scene).map(function(g){
       var ids = g.memberIds.filter(function(id){ return scene.positions[id]; });
-      if(!ids.length) return '';
-      var c = centroidOf(ids, scene);
+      var bb = groupBBoxVb(ids, scene);
+      if(!bb) return '';
+      var x1=bb.x1-pad, y1=bb.y1-pad, x2=bb.x2+pad, y2=bb.y2+pad;
+      return '<rect x="'+x1+'" y="'+y1+'" width="'+(x2-x1)+'" height="'+(y2-y1)+'" rx="18" fill="none" style="stroke:var(--accent);stroke-width:2.5;stroke-dasharray:7 5;opacity:.6;" pointer-events="none"></rect>';
+    }).join('');
+  }
+  function renderStuntBadges(scene){
+    var pad = 34, bw = 42, bh = 58;
+    return stuntGroupsOf(scene).map(function(g){
+      var ids = g.memberIds.filter(function(id){ return scene.positions[id]; });
+      var bb = groupBBoxVb(ids, scene);
+      if(!bb) return '';
       var t = STUNT_TYPES[g.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
       var picto = STUNT_PICTOS[g.stuntType] || STUNT_PICTOS[STUNT_TYPE_ORDER[0]];
-      var vx = c.x/100*VB_W, vy = c.y/100*VB_H - (t.topOffset||6)/100*VB_H - 46;
-      return '<g transform="translate('+(vx-14)+','+vy+')" pointer-events="none">' +
-        '<rect width="28" height="40" rx="6" style="fill:var(--surface);stroke:var(--border);stroke-width:1;opacity:.92;"></rect>' +
-        '<g transform="translate(4,3)">'+picto+'</g>' +
-        '<text x="14" y="37" text-anchor="middle" font-size="7" font-weight="700" style="fill:var(--text-muted);font-family:Manrope,sans-serif;">'+escapeHtml(t.label)+'</text>' +
+      var cy = (bb.y1+bb.y2)/2;
+      var placeRight = (bb.x2+pad+10+bw) <= (VB_W-10);
+      var bx = placeRight ? (bb.x2+pad+10) : (bb.x1-pad-10-bw);
+      var by = cy - bh/2;
+      return '<g transform="translate('+bx+','+by+')" pointer-events="none">' +
+        '<rect width="'+bw+'" height="'+bh+'" rx="9" style="fill:var(--surface);stroke:var(--border);stroke-width:1.2;opacity:.97;"></rect>' +
+        '<g transform="translate('+(bw/2-13)+',7) scale(1.3)">'+picto+'</g>' +
+        '<text x="'+(bw/2)+'" y="'+(bh-8)+'" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text);font-family:Manrope,sans-serif;">'+escapeHtml(t.label)+'</text>' +
       '</g>';
     }).join('');
   }
@@ -1023,6 +1057,7 @@
     var mini = !!opts.mini;
     var body = [renderFloorDefs(), renderBg()];
     if(!mini) body.push(renderPaths(scene));
+    if(!mini) body.push(renderGroupOutlines(scene));
     var els = [];
     state.members.forEach(function(m){
       if(!scene.presence[m.id] || !scene.positions[m.id]) return;
@@ -1452,7 +1487,12 @@
     if(selIds.length===1){
       var g = groupContaining(sc, selIds[0]);
       if(g && g.type==='stunt'){
-        out.push('<p class="empty-hint">このコマは「'+escapeHtml(groupLabel(g))+'」の一員です。</p>');
+        var curType = STUNT_TYPES[g.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
+        out.push('<p class="empty-hint">このコマは「'+escapeHtml(groupLabel(g))+'」の一員です。現在の技：<strong style="color:var(--text);">'+escapeHtml(curType.label)+'</strong></p>');
+        out.push('<select id="changeStuntTypeSelect" style="width:100%;border:1px solid var(--border);background:var(--surface);padding:6px 8px;border-radius:7px;">' +
+          STUNT_TYPE_ORDER.map(function(k){ return '<option value="'+k+'" '+(g.stuntType===k?'selected':'')+'>'+STUNT_TYPES[k].label+'</option>'; }).join('') +
+        '</select>');
+        out.push('<button class="btn small primary" data-act="change-stunt-type" style="width:100%;">この技に変更（構成は維持）</button>');
         out.push('<button class="btn small" data-act="open-drawer" data-gid="'+g.id+'" style="width:100%;">スタンツ構成を編集</button>');
       }
       var posForSel = sc.positions[selIds[0]];
@@ -1829,6 +1869,7 @@
           pushHistory();
           state = parsed;
           state.hasProject = true;
+          ensureMemberColors(state);
           ui.selectedIds=[]; ui.exportMenuOpen=false; ui.screen='editor';
           markDirty(); render();
         }catch(err){ alert('JSONの読み込みに失敗しました。'); }
@@ -2056,6 +2097,13 @@
       arrangeStunt(selectedPresentIds(), currentScene(), sel?sel.value:STUNT_TYPE_ORDER[0]);
     });
     onAll('[data-act="open-drawer"]','click', function(){ ui.stuntDrawerGroupId=this.getAttribute('data-gid'); render(); });
+    onAll('[data-act="change-stunt-type"]','click', function(){
+      var sc = currentScene();
+      var id = ui.selectedIds[0];
+      var g = id ? groupContaining(sc, id) : null;
+      var sel = document.getElementById('changeStuntTypeSelect');
+      if(g && sel) changeStuntType(g, sc, sel.value);
+    });
     on('tumbleSkillSelect','change', function(){
       var sc = currentScene();
       var id = ui.selectedIds[0];
@@ -2575,6 +2623,7 @@
     state.stage = state.stage || defaultStage();
     state.audio = state.audio || { dataUrl:'', name:'', sourceType:'file', youtubeUrl:'' };
     if(!state.audio.sourceType) state.audio.sourceType = state.audio.dataUrl ? 'file' : 'file';
+    ensureMemberColors(state);
     if(state.audio.dataUrl) AUDIO_EL.src = state.audio.dataUrl;
   }
 
