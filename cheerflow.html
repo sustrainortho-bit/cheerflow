@@ -187,6 +187,11 @@
   .tl-scroll{ position:relative; overflow-x:auto; overflow-y:hidden; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); height:56px; }
   .tl-track{ position:relative; height:100%; min-width:100%; }
   .tl-playhead{ position:absolute; top:0; bottom:0; width:2px; background:var(--accent); pointer-events:none; }
+  .tl-tooltip{
+    position:absolute; top:-22px; transform:translateX(-50%); background:var(--text); color:var(--bg);
+    font-size:10px; font-family:'IBM Plex Mono',monospace; padding:2px 5px; border-radius:4px;
+    white-space:nowrap; pointer-events:none; z-index:2;
+  }
   .tl-mark{ position:absolute; top:0; bottom:0; width:2px; pointer-events:none; }
   .tl-mark.a{ background:var(--hue-teal); }
   .tl-mark.b{ background:var(--hue-blue); }
@@ -430,7 +435,7 @@
     present:false, presentIndex:0, presentPlaying:false, presentTimer:null,
     stuntDrawerGroupId:null, audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
-    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, markA:null, markB:null}
+    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, markA:null, markB:null}, ytAudioOnly:false
   };
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
@@ -503,6 +508,15 @@
     var ph = document.getElementById('ytPlaceholder');
     if(!ph || ui.screen!=='editor' || state.audio.sourceType!=='youtube' || ui.ytEmbedBlocked){
       YT_CONTAINER.style.display = 'none';
+      return;
+    }
+    if(ui.ytAudioOnly){
+      // 再生は止めず、画面外に逃がして音声のみ流す（display:noneにすると停止する場合があるため避ける）
+      YT_CONTAINER.style.display = 'block';
+      YT_CONTAINER.style.top = '-9999px';
+      YT_CONTAINER.style.left = '-9999px';
+      YT_CONTAINER.style.width = '320px';
+      YT_CONTAINER.style.height = '180px';
       return;
     }
     var r = ph.getBoundingClientRect();
@@ -1187,7 +1201,7 @@
   }
 
   /* ---------------- Audio panel (left) ---------------- */
-  function renderTimeline(cur, dur){
+  function renderTimeline(cur, dur, leftExtra){
     dur = dur||0;
     var zoom = ui.tlZoom||60;
     var w = Math.max(1, dur) * zoom;
@@ -1208,6 +1222,7 @@
     var markB = (cs && cs.markB!=null) ? '<div class="tl-mark b" style="left:'+(cs.markB*zoom)+'px"><span>②</span></div>' : '';
     return '<div class="tl-wrap">' +
       '<div class="tl-toolbar">' +
+        (leftExtra||'') +
         '<button class="btn small ghost icon" id="tlZoomOut" type="button" title="縮小">－</button>' +
         '<button class="btn small ghost icon" id="tlZoomIn" type="button" title="拡大">＋</button>' +
         '<button class="btn small ghost" id="tlToPlayhead" type="button">現在位置へ</button>' +
@@ -1218,6 +1233,7 @@
         '<div class="tl-track" id="tlTrack" style="width:'+w+'px;'+gridBg+'">' +
           overlayGrid + labels + markA + markB +
           '<div class="tl-playhead" id="tlPlayhead" style="left:'+(cur*zoom)+'px"></div>' +
+          '<div class="tl-tooltip" id="tlTooltip" style="left:'+(cur*zoom)+'px;display:none;"></div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1275,8 +1291,10 @@
       var ytDur = playbackDuration(), ytCur = playbackTime();
       return '<div class="audio-panel">' +
         '<h2>音源（YouTube）</h2>' +
-        '<div id="ytPlaceholder" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;"></div>' +
-        renderTimeline(ytCur, ytDur) +
+        (ui.ytAudioOnly ?
+          '<div id="ytPlaceholder" style="width:100%;height:44px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;">音声のみ再生中（動画は非表示）</div>'
+          : '<div id="ytPlaceholder" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;"></div>') +
+        renderTimeline(ytCur, ytDur, '<button class="btn small ghost" id="ytAudioOnlyBtn" type="button">'+(ui.ytAudioOnly?'動画を表示':'音だけ表示')+'</button>') +
         '<button class="btn small" id="audioPlayBtn">'+(playbackIsPaused()?'▶ 再生':'❚❚ 一時停止')+'</button>' +
         '<button class="btn small primary" id="audioAddSceneBtn">+ この位置にシーン追加</button>' +
         renderCountSplitBox(ytDur) +
@@ -1762,7 +1780,11 @@
     /* footer strip */
     onAll('.thumb-card','click', function(e){
       if(e.target.closest('button')) return;
-      state.currentSceneId=this.getAttribute('data-scene-id'); ui.selectedIds=[]; render();
+      var sceneId = this.getAttribute('data-scene-id');
+      state.currentSceneId = sceneId; ui.selectedIds=[];
+      var sc = findScene(sceneId);
+      if(sc && sc.startSec!=null) playbackSeek(sc.startSec);
+      render();
     });
     onAll('[data-act="thumb-left"]','click', function(e){
       e.stopPropagation();
@@ -1832,6 +1854,7 @@
       resizer.addEventListener('pointercancel', function(){ dragging=false; resizer.classList.remove('active'); });
     })();
     on('audioPlayBtn','click', function(){ playbackTogglePlay(); });
+    on('ytAudioOnlyBtn','click', function(){ ui.ytAudioOnly = !ui.ytAudioOnly; render(); });
     on('tlZoomOut','click', function(){ ui.tlZoom = Math.max(8, (ui.tlZoom||60)/1.5); render(); });
     on('tlZoomIn','click', function(){ ui.tlZoom = Math.min(600, (ui.tlZoom||60)*1.5); render(); });
     on('tlToPlayhead','click', function(){
@@ -1847,6 +1870,16 @@
         var t = Math.max(0, (e.clientX - rect.left) / (ui.tlZoom||60));
         playbackSeek(t);
         updateTimelineUI(t, playbackDuration());
+        var tip = document.getElementById('tlTooltip');
+        if(tip){
+          tip.style.display = 'block';
+          tip.style.left = (t*(ui.tlZoom||60))+'px';
+          tip.textContent = fmtAudioTime(t);
+        }
+      }
+      function hideTooltip(){
+        var tip = document.getElementById('tlTooltip');
+        if(tip) tip.style.display = 'none';
       }
       track.addEventListener('pointerdown', function(e){
         dragging = true; ui.audioScrubbing = true;
@@ -1854,8 +1887,8 @@
         seekFromEvent(e);
       });
       track.addEventListener('pointermove', function(e){ if(dragging) seekFromEvent(e); });
-      track.addEventListener('pointerup', function(){ dragging=false; ui.audioScrubbing=false; });
-      track.addEventListener('pointercancel', function(){ dragging=false; ui.audioScrubbing=false; });
+      track.addEventListener('pointerup', function(){ dragging=false; ui.audioScrubbing=false; hideTooltip(); });
+      track.addEventListener('pointercancel', function(){ dragging=false; ui.audioScrubbing=false; hideTooltip(); });
     })();
     on('audioAddSceneBtn','click', function(){ addScene({ startSec: playbackTime() }); });
     on('countSplitOpenBtn','click', function(){ ui.countSplit = {open:true, markA:null, markB:null}; render(); });
@@ -2155,11 +2188,12 @@
     pushHistory();
     var baseSc = currentScene();
     var idx = baseSc ? sceneIndex(baseSc.id) : state.scenes.length-1;
+    var baseCount = state.scenes.length;
     var firstNewId = null;
     for(var i=0;i<n;i++){
       var t = cs.markA + i*interval;
       var ns = {
-        id:uid('sc'), name:'カウント'+(i+1), section:'transition', color:'#8d8698', timeLabel:'',
+        id:uid('sc'), name:'シーン'+(baseCount+i+1), section:'transition', color:'#8d8698', timeLabel:'',
         startSec:t, countMark:null, countNotes:{},
         note:'', videoLink:'', lightingNote:'', showIncomingPath:true, useActualPath:false,
         presence: baseSc ? Object.assign({}, baseSc.presence) : {},
