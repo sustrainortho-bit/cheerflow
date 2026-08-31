@@ -163,19 +163,37 @@
     padding:7px 16px; font-size:12px; display:flex; gap:8px; align-items:center;
   }
 
-  .editor-body{ flex:1; min-height:0; display:grid; grid-template-columns:1fr 2fr; overflow:hidden; }
-  .editor-body.with-sidebar{ grid-template-columns:1fr 2fr 1fr; }
+  .editor-body{ flex:1; min-height:0; display:grid; grid-template-columns:var(--audio-panel-w,340px) 6px 1fr; overflow:hidden; }
+  .editor-body.with-sidebar{ grid-template-columns:var(--audio-panel-w,340px) 6px 1fr 1fr; }
   @media (max-width:920px){
     .editor-body{ grid-template-columns:1fr; grid-auto-rows:auto; overflow:auto; }
     .editor-body.with-sidebar{ grid-template-columns:1fr; }
+    .panel-resizer{ display:none; }
   }
 
-  .audio-panel{ border-right:1px solid var(--border); background:var(--surface); padding:14px; overflow:auto; display:flex; flex-direction:column; gap:14px; }
+  .panel-resizer{ cursor:col-resize; position:relative; background:transparent; touch-action:none; }
+  .panel-resizer::after{ content:''; position:absolute; top:0; bottom:0; left:2px; width:2px; background:var(--border); }
+  .panel-resizer:hover::after, .panel-resizer.active::after{ background:var(--accent); }
+
+  .audio-panel{ border-right:1px solid var(--border); background:var(--surface); padding:14px; overflow:auto; display:flex; flex-direction:column; gap:14px; min-width:0; }
   .audio-panel h2{ font-size:12px; margin:0; }
   .audio-name{ font-size:12px; color:var(--text-muted); word-break:break-all; }
   .audio-time{ font-size:13px; }
-  .audio-seek{ width:100%; accent-color:var(--accent); }
   .yt-ref-box{ border:1px dashed var(--border); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px; }
+
+  .tl-wrap{ display:flex; flex-direction:column; gap:4px; }
+  .tl-toolbar{ display:flex; align-items:center; gap:6px; }
+  .tl-toolbar .spacer{ flex:1; }
+  .tl-scroll{ position:relative; overflow-x:auto; overflow-y:hidden; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); height:56px; }
+  .tl-track{ position:relative; height:100%; min-width:100%; }
+  .tl-playhead{ position:absolute; top:0; bottom:0; width:2px; background:var(--accent); pointer-events:none; }
+  .tl-mark{ position:absolute; top:0; bottom:0; width:2px; pointer-events:none; }
+  .tl-mark.a{ background:var(--hue-teal); }
+  .tl-mark.b{ background:var(--hue-blue); }
+  .tl-mark span{ position:absolute; top:2px; left:4px; font-size:10px; font-weight:700; color:var(--text); background:var(--surface); padding:0 3px; border-radius:4px; white-space:nowrap; }
+  .tl-label{ position:absolute; bottom:2px; font-size:9px; color:var(--text-muted); font-family:'IBM Plex Mono',monospace; transform:translateX(-50%); pointer-events:none; }
+  .count-split-box{ border:1px dashed var(--border); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .count-split-box .row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
 
   .stage-panel{ display:flex; flex-direction:column; min-height:0; padding:12px 14px; gap:10px; overflow:auto; }
   .sel-toolbar{
@@ -412,8 +430,15 @@
     present:false, presentIndex:0, presentPlaying:false, presentTimer:null,
     stuntDrawerGroupId:null, audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
-    undoStack:[], redoStack:[]
+    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, markA:null, markB:null}
   };
+
+  var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
+  (function(){
+    var saved = null;
+    try{ saved = parseFloat(localStorage.getItem(AUDIO_PANEL_W_KEY)); }catch(e){}
+    if(saved && saved>=220) document.documentElement.style.setProperty('--audio-panel-w', saved+'px');
+  })();
 
   /* ================= persistent elements (survive re-renders) ================= */
   var AUDIO_EL = document.createElement('audio');
@@ -496,10 +521,7 @@
     ytPollTimer = setInterval(function(){
       if(ui.audioScrubbing || !YT_PLAYER || !YT_PLAYER.getCurrentTime) return;
       var t = YT_PLAYER.getCurrentTime();
-      var bar = document.getElementById('audioSeek');
-      if(bar) bar.value = t;
-      var lbl = document.getElementById('audioTimeLabel');
-      if(lbl) lbl.textContent = fmtAudioTime(t)+' / '+fmtAudioTime(YT_PLAYER.getDuration()||0);
+      updateTimelineUI(t, YT_PLAYER.getDuration()||0);
     }, 200);
   }
   function loadYoutubeVideo(url){
@@ -559,6 +581,12 @@
     var m = Math.floor(sec/60), s = sec-m*60;
     return m+':'+(s<10?'0':'')+s.toFixed(1);
   }
+  function updateTimelineUI(t, dur){
+    var ph = document.getElementById('tlPlayhead');
+    if(ph) ph.style.left = (t*(ui.tlZoom||60))+'px';
+    var lbl = document.getElementById('audioTimeLabel');
+    if(lbl) lbl.textContent = fmtAudioTime(t)+' / '+fmtAudioTime(dur||0);
+  }
   function sceneTimeDisplay(sc){
     if(sc.startSec!=null) return fmtAudioTime(sc.startSec).replace(/\.0$/,'')+'〜';
     return sc.timeLabel||'';
@@ -568,16 +596,10 @@
   }
   AUDIO_EL.addEventListener('timeupdate', function(){
     if(ui.audioScrubbing) return;
-    var bar = document.getElementById('audioSeek');
-    if(bar) bar.value = AUDIO_EL.currentTime;
-    var lbl = document.getElementById('audioTimeLabel');
-    if(lbl) lbl.textContent = fmtAudioTime(AUDIO_EL.currentTime)+' / '+fmtAudioTime(AUDIO_EL.duration||0);
+    updateTimelineUI(AUDIO_EL.currentTime, AUDIO_EL.duration||0);
   });
   AUDIO_EL.addEventListener('loadedmetadata', function(){
-    var bar = document.getElementById('audioSeek');
-    if(bar) bar.max = AUDIO_EL.duration||0;
-    var lbl = document.getElementById('audioTimeLabel');
-    if(lbl) lbl.textContent = fmtAudioTime(AUDIO_EL.currentTime)+' / '+fmtAudioTime(AUDIO_EL.duration||0);
+    updateTimelineUI(AUDIO_EL.currentTime, AUDIO_EL.duration||0);
   });
   AUDIO_EL.addEventListener('play', function(){ var b=document.getElementById('audioPlayBtn'); if(b) b.textContent='❚❚ 一時停止'; });
   AUDIO_EL.addEventListener('pause', function(){ var b=document.getElementById('audioPlayBtn'); if(b) b.textContent='▶ 再生'; });
@@ -977,6 +999,7 @@
         renderEditorHeader() +
         '<div class="editor-body'+(ui.sidebarOpen?' with-sidebar':'')+'">' +
           renderAudioPanel() +
+          '<div class="panel-resizer" id="audioPanelResizer" title="ドラッグして幅を調整"></div>' +
           renderStagePanel() +
           (ui.sidebarOpen ? renderSidePanel() : '') +
         '</div>' +
@@ -1164,6 +1187,67 @@
   }
 
   /* ---------------- Audio panel (left) ---------------- */
+  function renderTimeline(cur, dur){
+    dur = dur||0;
+    var zoom = ui.tlZoom||60;
+    var w = Math.max(1, dur) * zoom;
+    var step = zoom>=150 ? 1 : zoom>=60 ? 2 : zoom>=25 ? 5 : zoom>=10 ? 15 : 30;
+    var labels = '';
+    for(var t=0; t<=dur; t+=step){
+      labels += '<span class="tl-label" style="left:'+(t*zoom)+'px">'+fmtAudioTime(t).replace(/\.0$/,'')+'</span>';
+    }
+    var gridBg = 'background-image:repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent '+(step*zoom)+'px);';
+    var cs = ui.countSplit;
+    var overlayGrid = '';
+    if(cs && cs.markA!=null && cs.markB!=null && cs.markB>cs.markA){
+      var interval = cs.markB - cs.markA;
+      overlayGrid = '<div style="position:absolute;top:0;bottom:0;left:'+(cs.markA*zoom)+'px;right:0;opacity:.55;'+
+        'background-image:repeating-linear-gradient(to right, var(--hue-rust) 0, var(--hue-rust) 2px, transparent 2px, transparent '+(interval*zoom)+'px);"></div>';
+    }
+    var markA = (cs && cs.markA!=null) ? '<div class="tl-mark a" style="left:'+(cs.markA*zoom)+'px"><span>①</span></div>' : '';
+    var markB = (cs && cs.markB!=null) ? '<div class="tl-mark b" style="left:'+(cs.markB*zoom)+'px"><span>②</span></div>' : '';
+    return '<div class="tl-wrap">' +
+      '<div class="tl-toolbar">' +
+        '<button class="btn small ghost icon" id="tlZoomOut" type="button" title="縮小">－</button>' +
+        '<button class="btn small ghost icon" id="tlZoomIn" type="button" title="拡大">＋</button>' +
+        '<button class="btn small ghost" id="tlToPlayhead" type="button">現在位置へ</button>' +
+        '<span class="spacer"></span>' +
+        '<span class="audio-time mono" id="audioTimeLabel">'+fmtAudioTime(cur)+' / '+fmtAudioTime(dur)+'</span>' +
+      '</div>' +
+      '<div class="tl-scroll" id="tlScroll">' +
+        '<div class="tl-track" id="tlTrack" style="width:'+w+'px;'+gridBg+'">' +
+          overlayGrid + labels + markA + markB +
+          '<div class="tl-playhead" id="tlPlayhead" style="left:'+(cur*zoom)+'px"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  function renderCountSplitBox(dur){
+    var cs = ui.countSplit || (ui.countSplit = {open:false, markA:null, markB:null});
+    if(!cs.open){
+      return '<button class="btn small ghost" id="countSplitOpenBtn" type="button">8カウントで区切る…</button>';
+    }
+    var canB = cs.markA!=null;
+    var canGen = cs.markA!=null && cs.markB!=null && cs.markB>cs.markA;
+    var info = '';
+    if(canGen){
+      var interval = cs.markB-cs.markA;
+      var n = Math.max(0, Math.floor(((dur||0)-cs.markA)/interval))+1;
+      info = '<p class="empty-hint">間隔 '+interval.toFixed(2)+'秒（約BPM '+Math.round(60*8/interval)+'）・シーンを'+n+'個追加します</p>';
+    }
+    return '<div class="count-split-box">' +
+      '<p class="empty-hint">タイムライン上で①「1カウント目」の位置、②「次の1カウント目（8カウント後）」の位置を再生して合わせ、それぞれマークしてください。</p>' +
+      '<div class="row">' +
+        '<button class="btn small" id="markABtn" type="button">① 1カウント目にマーク'+(cs.markA!=null?'（'+fmtAudioTime(cs.markA)+'）':'')+'</button>' +
+        '<button class="btn small" id="markBBtn" type="button" '+(canB?'':'disabled')+'>② 次の1カウント目にマーク'+(cs.markB!=null?'（'+fmtAudioTime(cs.markB)+'）':'')+'</button>' +
+      '</div>' +
+      info +
+      '<div class="row">' +
+        '<button class="btn small primary" id="generateCountScenesBtn" type="button" '+(canGen?'':'disabled')+'>この間隔でシーンを生成</button>' +
+        '<button class="btn small ghost" id="countSplitCloseBtn" type="button">閉じる</button>' +
+      '</div>' +
+    '</div>';
+  }
   function renderAudioPanel(){
     var isYoutube = state.audio.sourceType==='youtube';
     if(isYoutube){
@@ -1192,10 +1276,10 @@
       return '<div class="audio-panel">' +
         '<h2>音源（YouTube）</h2>' +
         '<div id="ytPlaceholder" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;"></div>' +
-        '<div class="audio-time mono" id="audioTimeLabel">'+fmtAudioTime(ytCur)+' / '+fmtAudioTime(ytDur)+'</div>' +
-        '<input type="range" class="audio-seek" id="audioSeek" min="0" max="'+(ytDur||0)+'" step="any" value="'+ytCur+'">' +
+        renderTimeline(ytCur, ytDur) +
         '<button class="btn small" id="audioPlayBtn">'+(playbackIsPaused()?'▶ 再生':'❚❚ 一時停止')+'</button>' +
         '<button class="btn small primary" id="audioAddSceneBtn">+ この位置にシーン追加</button>' +
+        renderCountSplitBox(ytDur) +
         '<button class="btn small ghost" id="ytChangeBtn">動画を変更</button>' +
         '<hr class="divider">' +
         '<button class="btn small ghost" id="switchToFileBtn">ファイル音源に切り替える</button>' +
@@ -1210,10 +1294,10 @@
       '<button class="btn small" id="audioUploadBtn">音源ファイルを選択</button>' +
       '<div class="audio-name">'+escapeHtml(state.audio.name||'未選択')+'</div>' +
       (has ? (
-        '<div class="audio-time mono" id="audioTimeLabel">'+fmtAudioTime(cur)+' / '+fmtAudioTime(dur)+'</div>' +
-        '<input type="range" class="audio-seek" id="audioSeek" min="0" max="'+(dur||0)+'" step="any" value="'+cur+'">' +
+        renderTimeline(cur, dur) +
         '<button class="btn small" id="audioPlayBtn">'+(AUDIO_EL.paused?'▶ 再生':'❚❚ 一時停止')+'</button>' +
         '<button class="btn small primary" id="audioAddSceneBtn">+ この位置にシーン追加</button>' +
+        renderCountSplitBox(dur) +
         '<button class="btn small danger ghost" id="audioRemoveBtn">音源を削除</button>'
       ) : '<p class="empty-hint">音源ファイルをアップロードすると、再生位置に合わせてシーンを追加できます。</p>') +
       '<hr class="divider">' +
@@ -1725,16 +1809,60 @@
       state.audio.dataUrl=''; state.audio.name='';
       markDirty(); render();
     });
+    (function(){
+      var resizer = document.getElementById('audioPanelResizer');
+      if(!resizer) return;
+      var dragging = false;
+      function apply(px){
+        px = Math.max(220, Math.min(window.innerWidth-320, px));
+        document.documentElement.style.setProperty('--audio-panel-w', px+'px');
+        try{ localStorage.setItem(AUDIO_PANEL_W_KEY, String(px)); }catch(e){}
+      }
+      resizer.addEventListener('pointerdown', function(e){
+        dragging = true; resizer.classList.add('active');
+        try{ resizer.setPointerCapture(e.pointerId); }catch(err){}
+      });
+      resizer.addEventListener('pointermove', function(e){
+        if(!dragging) return;
+        var body = resizer.parentElement;
+        var rect = body.getBoundingClientRect();
+        apply(e.clientX - rect.left);
+      });
+      resizer.addEventListener('pointerup', function(){ dragging=false; resizer.classList.remove('active'); });
+      resizer.addEventListener('pointercancel', function(){ dragging=false; resizer.classList.remove('active'); });
+    })();
     on('audioPlayBtn','click', function(){ playbackTogglePlay(); });
-    on('audioSeek','input', function(){
-      ui.audioScrubbing = true;
-      var t = parseFloat(this.value);
-      playbackSeek(t);
-      var lbl = document.getElementById('audioTimeLabel');
-      if(lbl) lbl.textContent = fmtAudioTime(t)+' / '+fmtAudioTime(playbackDuration());
+    on('tlZoomOut','click', function(){ ui.tlZoom = Math.max(8, (ui.tlZoom||60)/1.5); render(); });
+    on('tlZoomIn','click', function(){ ui.tlZoom = Math.min(600, (ui.tlZoom||60)*1.5); render(); });
+    on('tlToPlayhead','click', function(){
+      var sc = document.getElementById('tlScroll');
+      if(sc) sc.scrollLeft = Math.max(0, playbackTime()*(ui.tlZoom||60) - sc.clientWidth/2);
     });
-    on('audioSeek','change', function(){ ui.audioScrubbing = false; });
+    (function(){
+      var track = document.getElementById('tlTrack');
+      if(!track) return;
+      var dragging = false;
+      function seekFromEvent(e){
+        var rect = track.getBoundingClientRect();
+        var t = Math.max(0, (e.clientX - rect.left) / (ui.tlZoom||60));
+        playbackSeek(t);
+        updateTimelineUI(t, playbackDuration());
+      }
+      track.addEventListener('pointerdown', function(e){
+        dragging = true; ui.audioScrubbing = true;
+        try{ track.setPointerCapture(e.pointerId); }catch(err){}
+        seekFromEvent(e);
+      });
+      track.addEventListener('pointermove', function(e){ if(dragging) seekFromEvent(e); });
+      track.addEventListener('pointerup', function(){ dragging=false; ui.audioScrubbing=false; });
+      track.addEventListener('pointercancel', function(){ dragging=false; ui.audioScrubbing=false; });
+    })();
     on('audioAddSceneBtn','click', function(){ addScene({ startSec: playbackTime() }); });
+    on('countSplitOpenBtn','click', function(){ ui.countSplit = {open:true, markA:null, markB:null}; render(); });
+    on('countSplitCloseBtn','click', function(){ ui.countSplit = {open:false, markA:null, markB:null}; render(); });
+    on('markABtn','click', function(){ ui.countSplit.markA = playbackTime(); ui.countSplit.markB = null; render(); });
+    on('markBBtn','click', function(){ ui.countSplit.markB = playbackTime(); render(); });
+    on('generateCountScenesBtn','click', function(){ generateCountScenes(); });
     on('switchToYtBtn','click', function(){
       pushHistory();
       AUDIO_EL.pause();
@@ -2014,6 +2142,35 @@
     pushHistory();
     state.scenes.splice(idx+1, 0, ns);
     state.currentSceneId = ns.id;
+    markDirty(); render();
+  }
+  function generateCountScenes(){
+    var cs = ui.countSplit;
+    if(!cs || cs.markA==null || cs.markB==null || cs.markB<=cs.markA) return;
+    var interval = cs.markB - cs.markA;
+    var dur = playbackDuration();
+    var n = Math.max(0, Math.floor((dur - cs.markA)/interval)) + 1;
+    if(n<1) return;
+    if(!confirm('『'+fmtAudioTime(cs.markA)+'』から'+interval.toFixed(2)+'秒（8カウント）間隔で、シーンを'+n+'個追加します。よろしいですか？')) return;
+    pushHistory();
+    var baseSc = currentScene();
+    var idx = baseSc ? sceneIndex(baseSc.id) : state.scenes.length-1;
+    var firstNewId = null;
+    for(var i=0;i<n;i++){
+      var t = cs.markA + i*interval;
+      var ns = {
+        id:uid('sc'), name:'カウント'+(i+1), section:'transition', color:'#8d8698', timeLabel:'',
+        startSec:t, countMark:null, countNotes:{},
+        note:'', videoLink:'', lightingNote:'', showIncomingPath:true, useActualPath:false,
+        presence: baseSc ? Object.assign({}, baseSc.presence) : {},
+        positions: baseSc ? JSON.parse(JSON.stringify(baseSc.positions)) : {},
+        groups: baseSc ? JSON.parse(JSON.stringify(baseSc.groups||[])) : []
+      };
+      state.scenes.splice(idx+1+i, 0, ns);
+      if(i===0) firstNewId = ns.id;
+    }
+    state.currentSceneId = firstNewId;
+    ui.countSplit = {open:false, markA:null, markB:null};
     markDirty(); render();
   }
 
