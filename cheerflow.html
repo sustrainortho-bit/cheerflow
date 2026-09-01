@@ -139,7 +139,7 @@
     padding:7px 16px; font-size:12px; display:flex; gap:8px; align-items:center;
   }
 
-  .editor-body{ flex:1; min-height:0; display:grid; grid-template-columns:var(--audio-panel-w,340px) 6px 1fr; overflow:hidden; }
+  .editor-body{ flex:1; min-height:0; display:grid; grid-template-columns:var(--audio-panel-w,340px) 6px 1fr; grid-template-rows:minmax(0,1fr); overflow:hidden; }
   .editor-body.with-sidebar{ grid-template-columns:var(--audio-panel-w,340px) 6px 2fr 1fr; }
   @media (max-width:1024px){
     .editor-body{ grid-template-columns:var(--audio-panel-w,min(280px,34vw)) 6px 1fr; }
@@ -190,7 +190,7 @@
   }
   .sel-toolbar .count{ font-size:12px; color:var(--text-muted); font-weight:700; margin-right:4px; }
   .stage-frame{ position:relative; flex:0 0 auto; }
-  .stage-row{ display:flex; flex-direction:row; gap:12px; align-items:flex-start; justify-content:center; width:100%; min-height:0; }
+  .stage-row{ display:flex; flex:1 1 auto; flex-direction:row; gap:12px; align-items:flex-start; justify-content:center; width:100%; min-height:0; }
   .count-notes-side{ display:flex; flex-direction:column; gap:6px; width:150px; flex:0 0 150px; max-height:100%; overflow:auto; }
   .count-notes-side h3{ font-size:11px; margin:0; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; font-family:'Oswald',system-ui,sans-serif; }
   .scene-memo-inline{
