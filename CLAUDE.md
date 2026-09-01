@@ -44,6 +44,23 @@ cheerflow.html   # アプリ本体（これ1ファイルで完結。ビルド工
 7. **ガイド線の視認性**：中央線=teal、対角線=amber、三分割線=violetとそれぞれ別配色にし、不透明度も0.6〜0.7→0.7〜0.9に引き上げ
 8. **8カウント自動分割のBPM方式化**：`ui.countSplit`を`{markA, markB}`（2点マーク）から`{bpm, markA}`（BPM入力＋1点マーク）に変更。間隔は`60/bpm*8`で自動計算。`renderTimeline()`のプレビュー用グリッド、`generateCountScenes()`の生成ロジックも合わせて変更
 
+## 完了：2026-09-01 上記8項目への追加フィードバック対応
+
+オーナーが上記8項目を実機（iPad）で確認した結果のフィードバック。1・3・5・6は追加修正、それ以外は新規要望。すべて実装・Browserツールでのエミュレーション確認済み（1のタッチバウンスのみ実機のみで確認可能、コード上は標準的な対策を適用）。
+
+1. **iPad：画面がドラッグで動く**：`html,body`に`overflow:hidden; overscroll-behavior:none;`を追加。iOS Safari特有のバウンス（ラバーバンド）スクロールを抑止する標準的な対策
+2. **中央テーブルと右サイドテーブルの比率が崩れていた（根本原因判明）**：`.side-panel`（グリッドの直接の子要素）に`overflow`が未設定だったため、CSS Gridの「暗黙のminmax(auto,1fr)」規則により、内部コンテンツ（スタンツ一覧のピクトグラムピッカー等、幅の広い要素）のmin-content幅がそのまま`.side-panel`の最小幅として要求され、`2fr`側（ステージ）を28pxまで潰していた（実測：修正前28px:836px、修正後492px:246px=正確に2:1）。`.side-panel{ overflow:hidden; min-width:0; }`を追加して解消
+3. **折りたたみの文字サイズ**：`details.collapse > summary`のCSSを`h2`と同じOswald/12px/uppercaseに統一
+5. **スタンツの重なり（人数に応じた図形配置）**：`autoComposition`のロール順（トップ→ハンズ→ベース→スポッター）をそのまま「図形の上から詰める順番」として使う設計に変更。`stuntShapeOffsets(n, unit)`で人数nに応じた頂点座標（3人=正三角形、4人=ひし形、5人=台形、6人以上=同心円リング）をVB単位で計算し、X/Yそれぞれ÷10・÷7でパーセントに変換（SVGのviewBoxが10:7でCSS側もaspect-ratio:10/7なので、VB単位で計算すれば描画結果は正しく正多角形になる）。実機確認：3人グループの3辺すべて50.0（正三角形）、4人グループが上下左右対称（ひし形）、5人グループが上2人・下3人（台形）であることを確認
+6. **中央線を縦横4分割に修正**：前回「前後4分割」（横線3本）のみだったのをオーナー指摘で「前後左右4分割」に修正（縦線3本を追加、計6本）
+- **ボード上でのスタンツ技変更**：スタンツバッジ（ピクトグラム）を`pointer-events:none`から`.stunt-badge`クリック可能要素に変更。タップすると`renderBoardPopover()`がボード脇にピクトグラム選択ポップオーバーを表示し、選択すると即座に`changeStuntType()`が呼ばれる
+- **コマの長押しでタンブリング設定**：`wireStageEvents()`のpointerdownに550msの長押しタイマーを追加（グループに属さない単独コマのみ・移動やpointerup発生時はタイマーをキャンセル）。長押しで「タンブリング」ボタンが出現→タップで技リスト（`TUMBLE_SKILL_ORDER`）を表示→選択で`positions[id].tumbleSkill`を設定
+- **シーン全体のメモ欄をボード下に追加**：`renderStagePanel()`に`#sceneMemoInline`テキストエリアを追加。既存の「シーン」タブの`#sceneNote`と同じ`sc.note`フィールドを共有（相互に反映される）
+- **ボードが常に中央パネルに収まるサイズに**：CSSのみでの解決が難しかったため、`fitStageFrame()`関数を新設。`.stage-panel`の実際の余白（他の兄弟要素の高さ・パディング）を`getBoundingClientRect()`で測定し、10:7比を保ったまま収まる最大サイズを計算して`.stage-frame`にインラインで`width`/`height`を設定。`render()`の最後と`window.resize`イベントで呼び出す
+- **シークバーの最大縮小範囲を拡大**：`tlZoomOut`の下限を8→0.3に、目盛り間隔の閾値も低ズーム域を追加（zoom<3で60秒間隔）。長い曲でも全体を1画面に収められる
+
+**ボードポップオーバーの実装メモ**：`ui.boardPopover`（`{type, gid/memberId, x, y}`）で状態管理。SVG内の`.stunt-badge`クリックとボード外クリックは`wireStageEvents()`のpointerdownで、それ以外（サイドバー等）へのクリックはグローバルな`document.addEventListener('pointerdown', ...)`（アプリ初期化時に1回だけ登録）でポップオーバーを閉じる。
+
 ## 現在の状態（2026-08-31 引き継ぎ時点で確認した内容）
 
 ### 実装済み機能（コードを読んで確認）
