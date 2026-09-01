@@ -227,6 +227,16 @@
   .stunt-list-row.active{ border-color:var(--accent); }
   .stunt-list-head{ display:flex; align-items:center; justify-content:space-between; }
   .stunt-list-head strong{ font-size:12px; }
+  .stunt-picto-picker{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+  .stunt-picto-btn{
+    flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:2px;
+    border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:5px 6px; cursor:pointer; min-width:50px;
+  }
+  .stunt-picto-btn.active{ border-color:var(--accent); background:var(--accent-soft); }
+  .stunt-picto-btn span{ font-size:9px; font-weight:700; color:var(--text-muted); white-space:nowrap; }
+  .stunt-picto-btn.active span{ color:var(--text); }
+  .stunt-picto-btn svg{ display:block; }
+  .stunt-picto-btn:disabled{ opacity:.4; cursor:not-allowed; }
 
   /* ---------- footer scene strip ---------- */
   .footer-strip{
@@ -332,20 +342,23 @@
     spotter: { label:'スポッター',   short:'S', hue:'--hue-teal' },
     hands:   { label:'ハンズ',       short:'H', hue:'--hue-amber' }
   };
+  /* 縦方向の1%はVB_H(700)基準・横方向の1%はVB_W(1000)基準で物理サイズが異なるため、
+     縦方向のoffsetは横方向のspacingと同じ数値でも実際の間隔(VB単位)が7/10倍狭くなる。
+     コマ直径(48 VB単位)を下回らないよう、topOffset/spotterOffsetは13以上を確保している。 */
   var STUNT_TYPES = {
-    stand:         { label:'スタンド',           baseSpacing:5, spotterOffset:6, handsSpacing:8, topOffset:6 },
-    halfup:        { label:'ハーフアップ',       baseSpacing:5, spotterOffset:5, handsSpacing:8, topOffset:5 },
-    fullup:        { label:'フルアップ',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:8 },
-    extension:     { label:'エクステンション',   baseSpacing:5, spotterOffset:8, handsSpacing:9, topOffset:8 },
-    liberty:       { label:'リバティ',           baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
-    arabesque:     { label:'アラベスク',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
-    heel:          { label:'ヒール',             baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
-    scorpion:      { label:'スコーピオン',       baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
-    shoulderstand: { label:'ショルダースタンド', baseSpacing:5, spotterOffset:6, handsSpacing:8, topOffset:6 },
-    elevator:      { label:'エレベーター',       baseSpacing:5, spotterOffset:6, handsSpacing:9, topOffset:6 },
-    pyramid:       { label:'ピラミッド',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
-    sidebyside:    { label:'サイドサイ',         baseSpacing:5, spotterOffset:7, handsSpacing:9, topOffset:7 },
-    stack:         { label:'スタック',           baseSpacing:5, spotterOffset:6, handsSpacing:7, topOffset:5 }
+    stand:         { label:'スタンド',           baseSpacing:5, handsSpacing:6, topOffset:14, spotterOffset:14 },
+    halfup:        { label:'ハーフアップ',       baseSpacing:5, handsSpacing:6, topOffset:13, spotterOffset:13 },
+    fullup:        { label:'フルアップ',         baseSpacing:6, handsSpacing:7, topOffset:20, spotterOffset:17 },
+    extension:     { label:'エクステンション',   baseSpacing:6, handsSpacing:7, topOffset:19, spotterOffset:17 },
+    liberty:       { label:'リバティ',           baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
+    arabesque:     { label:'アラベスク',         baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
+    heel:          { label:'ヒール',             baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
+    scorpion:      { label:'スコーピオン',       baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
+    shoulderstand: { label:'ショルダースタンド', baseSpacing:5, handsSpacing:6, topOffset:14, spotterOffset:14 },
+    elevator:      { label:'エレベーター',       baseSpacing:5, handsSpacing:6, topOffset:15, spotterOffset:14 },
+    pyramid:       { label:'ピラミッド',         baseSpacing:5, handsSpacing:6, topOffset:16, spotterOffset:15 },
+    sidebyside:    { label:'サイドサイ',         baseSpacing:5, handsSpacing:6, topOffset:16, spotterOffset:15 },
+    stack:         { label:'スタック',           baseSpacing:4, handsSpacing:5, topOffset:13, spotterOffset:13 }
   };
   var STUNT_TYPE_ORDER = ['stand','halfup','fullup','extension','liberty','arabesque','heel','scorpion','shoulderstand','elevator','pyramid','sidebyside','stack'];
 
@@ -464,7 +477,7 @@
     present:false, presentIndex:0, presentPlaying:false, presentTimer:null,
     stuntDrawerGroupId:null, audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
-    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, markA:null, markB:null}, ytAudioOnly:false
+    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false
   };
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
@@ -747,10 +760,11 @@
     var center = centroidOf(group.memberIds, sc);
     var comp = group.composition;
     var t = STUNT_TYPES[group.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
-    if(comp.top) setPos(sc, comp.top, center.x, center.y-t.topOffset);
-    distributeAlongX(sc, comp.base, center.x, center.y+7, t.baseSpacing);
-    if(comp.spotter) setPos(sc, comp.spotter, center.x, center.y+t.spotterOffset);
-    distributeAlongX(sc, comp.hands, center.x, center.y-2, t.handsSpacing);
+    var scale = (state.stage.komaScale||100)/100;
+    if(comp.top) setPos(sc, comp.top, center.x, center.y-t.topOffset*scale);
+    distributeAlongX(sc, comp.hands, center.x, center.y-8*scale, t.handsSpacing*scale);
+    distributeAlongX(sc, comp.base, center.x, center.y+8*scale, t.baseSpacing*scale);
+    if(comp.spotter) setPos(sc, comp.spotter, center.x, center.y+t.spotterOffset*scale);
   }
 
   function arrangeRow(ids, sc){
@@ -953,16 +967,20 @@
       }
     }
     if(st.showCenter){
-      g.push('<line x1="'+(VB_W/2)+'" y1="0" x2="'+(VB_W/2)+'" y2="'+VB_H+'" style="stroke:var(--floor-center);stroke-width:1.5;stroke-dasharray:8 6;opacity:.6;"></line>');
+      g.push('<line x1="'+(VB_W/2)+'" y1="0" x2="'+(VB_W/2)+'" y2="'+VB_H+'" style="stroke:var(--hue-teal);stroke-width:2;stroke-dasharray:9 6;opacity:.9;"></line>');
+      [1,2,3].forEach(function(k){
+        var gy = VB_H*k/4;
+        g.push('<line x1="0" y1="'+gy+'" x2="'+VB_W+'" y2="'+gy+'" style="stroke:var(--hue-teal);stroke-width:1.5;stroke-dasharray:9 6;opacity:.7;"></line>');
+      });
     }
     if(st.showDiagonal){
-      g.push('<line x1="0" y1="0" x2="'+VB_W+'" y2="'+VB_H+'" style="stroke:var(--floor-line);stroke-width:1;stroke-dasharray:3 5;"></line>');
-      g.push('<line x1="'+VB_W+'" y1="0" x2="0" y2="'+VB_H+'" style="stroke:var(--floor-line);stroke-width:1;stroke-dasharray:3 5;"></line>');
+      g.push('<line x1="0" y1="0" x2="'+VB_W+'" y2="'+VB_H+'" style="stroke:var(--hue-amber);stroke-width:1.75;stroke-dasharray:4 5;opacity:.9;"></line>');
+      g.push('<line x1="'+VB_W+'" y1="0" x2="0" y2="'+VB_H+'" style="stroke:var(--hue-amber);stroke-width:1.75;stroke-dasharray:4 5;opacity:.9;"></line>');
     }
     if(st.showThirds){
       [1,2].forEach(function(k){
-        g.push('<line x1="'+(VB_W*k/3)+'" y1="0" x2="'+(VB_W*k/3)+'" y2="'+VB_H+'" style="stroke:var(--floor-line);stroke-width:1;stroke-dasharray:2 4;opacity:.7;"></line>');
-        g.push('<line x1="0" y1="'+(VB_H*k/3)+'" x2="'+VB_W+'" y2="'+(VB_H*k/3)+'" style="stroke:var(--floor-line);stroke-width:1;stroke-dasharray:2 4;opacity:.7;"></line>');
+        g.push('<line x1="'+(VB_W*k/3)+'" y1="0" x2="'+(VB_W*k/3)+'" y2="'+VB_H+'" style="stroke:var(--hue-violet);stroke-width:1.75;stroke-dasharray:2 4;opacity:.9;"></line>');
+        g.push('<line x1="0" y1="'+(VB_H*k/3)+'" x2="'+VB_W+'" y2="'+(VB_H*k/3)+'" style="stroke:var(--hue-violet);stroke-width:1.75;stroke-dasharray:2 4;opacity:.9;"></line>');
       });
     }
     if(st.showFrontNumbers){
@@ -1022,6 +1040,18 @@
     return out.join('');
   }
 
+  function renderStuntPictoPicker(opts){
+    opts = opts || {};
+    return '<div class="stunt-picto-picker">' +
+      STUNT_TYPE_ORDER.map(function(k){
+        var sel = k===opts.currentVal;
+        return '<button type="button" class="stunt-picto-btn'+(sel?' active':'')+'" data-act="'+opts.act+'" data-stunt-key="'+k+'" '+(opts.extraAttrs||'')+' '+(opts.disabled?'disabled':'')+' title="'+escapeHtml(STUNT_TYPES[k].label)+'">' +
+          '<svg viewBox="0 0 20 26" width="20" height="24">'+STUNT_PICTOS[k]+'</svg>' +
+          '<span>'+escapeHtml(STUNT_TYPES[k].label)+'</span>' +
+        '</button>';
+      }).join('') +
+    '</div>';
+  }
   function stuntGroupsOf(scene){
     return (scene.groups||[]).filter(function(g){ return g.type==='stunt' && g.memberIds.length; });
   }
@@ -1297,13 +1327,13 @@
     var gridBg = 'background-image:repeating-linear-gradient(to right, var(--border) 0, var(--border) 1px, transparent 1px, transparent '+(step*zoom)+'px);';
     var cs = ui.countSplit;
     var overlayGrid = '';
-    if(cs && cs.markA!=null && cs.markB!=null && cs.markB>cs.markA){
-      var interval = cs.markB - cs.markA;
+    var csInterval = (cs && cs.bpm>0) ? (60/cs.bpm*8) : null;
+    if(cs && cs.markA!=null && csInterval){
       overlayGrid = '<div style="position:absolute;top:0;bottom:0;left:'+(cs.markA*zoom)+'px;right:0;opacity:.55;'+
-        'background-image:repeating-linear-gradient(to right, var(--hue-rust) 0, var(--hue-rust) 2px, transparent 2px, transparent '+(interval*zoom)+'px);"></div>';
+        'background-image:repeating-linear-gradient(to right, var(--hue-rust) 0, var(--hue-rust) 2px, transparent 2px, transparent '+(csInterval*zoom)+'px);"></div>';
     }
     var markA = (cs && cs.markA!=null) ? '<div class="tl-mark a" style="left:'+(cs.markA*zoom)+'px"><span>①</span></div>' : '';
-    var markB = (cs && cs.markB!=null) ? '<div class="tl-mark b" style="left:'+(cs.markB*zoom)+'px"><span>②</span></div>' : '';
+    var markB = '';
     var sceneMarks = state.scenes.map(function(s){
       if(s.startSec==null) return '';
       return '<div class="tl-scene-mark" style="left:'+(s.startSec*zoom)+'px" title="'+escapeHtml(s.name||'')+'"></div>';
@@ -1334,23 +1364,22 @@
     '</div>';
   }
   function renderCountSplitBox(dur){
-    var cs = ui.countSplit || (ui.countSplit = {open:false, markA:null, markB:null});
+    var cs = ui.countSplit || (ui.countSplit = {open:false, bpm:null, markA:null});
     if(!cs.open){
       return '<button class="btn small ghost" id="countSplitOpenBtn" type="button">8カウントで区切る…</button>';
     }
-    var canB = cs.markA!=null;
-    var canGen = cs.markA!=null && cs.markB!=null && cs.markB>cs.markA;
+    var canGen = cs.bpm>0 && cs.markA!=null;
     var info = '';
     if(canGen){
-      var interval = cs.markB-cs.markA;
+      var interval = 60/cs.bpm*8;
       var n = Math.max(0, Math.floor(((dur||0)-cs.markA)/interval))+1;
-      info = '<p class="empty-hint">間隔 '+interval.toFixed(2)+'秒（約BPM '+Math.round(60*8/interval)+'）・シーンを'+n+'個追加します</p>';
+      info = '<p class="empty-hint">間隔 '+interval.toFixed(2)+'秒（8カウント）・シーンを'+n+'個追加します</p>';
     }
     return '<div class="count-split-box">' +
-      '<p class="empty-hint">タイムライン上で①「1カウント目」の位置、②「次の1カウント目（8カウント後）」の位置を再生して合わせ、それぞれマークしてください。</p>' +
+      '<p class="empty-hint">曲のBPMを入力し、タイムライン上で「1カウント目」の位置を再生して合わせてマークしてください。8カウント間隔はBPMから自動計算されます。</p>' +
+      '<div class="field"><label for="countSplitBpm">BPM</label><input type="number" id="countSplitBpm" min="40" max="240" step="0.1" value="'+(cs.bpm||'')+'" placeholder="例: 128"></div>' +
       '<div class="row">' +
-        '<button class="btn small" id="markABtn" type="button">① 1カウント目にマーク'+(cs.markA!=null?'（'+fmtAudioTime(cs.markA)+'）':'')+'</button>' +
-        '<button class="btn small" id="markBBtn" type="button" '+(canB?'':'disabled')+'>② 次の1カウント目にマーク'+(cs.markB!=null?'（'+fmtAudioTime(cs.markB)+'）':'')+'</button>' +
+        '<button class="btn small" id="markABtn" type="button">1カウント目にマーク'+(cs.markA!=null?'（'+fmtAudioTime(cs.markA)+'）':'')+'</button>' +
       '</div>' +
       info +
       '<div class="row">' +
@@ -1437,8 +1466,8 @@
       '</div>';
     }
     return '<div class="stage-panel">' +
-      selToolbar +
       '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+'</div>' +
+      selToolbar +
     '</div>';
   }
   function renderPresenceRow(sc){
@@ -1474,29 +1503,31 @@
     out.push('<h2 style="font-size:12px;margin:0;">人数</h2>');
     out.push('<div class="headcount-row"><button class="btn small icon" data-act="hc-minus">−</button><span class="num mono">'+state.members.length+'人</span><button class="btn small icon" data-act="hc-plus">＋</button></div>');
     out.push('<hr class="divider">');
-    out.push('<h2 style="font-size:12px;margin:0;">出演メンバー（このシーン）</h2>');
-    out.push(renderPresenceRow(sc));
+    out.push('<details class="collapse"><summary>出演メンバー（このシーン）</summary>' +
+      '<div style="margin-top:8px;">'+renderPresenceRow(sc)+'</div>' +
+    '</details>');
     out.push('<hr class="divider">');
-    out.push('<h2 style="font-size:12px;margin:0;">配置のプリセット</h2>');
-    out.push('<p class="empty-hint">選択中のコマ（未選択なら出演中の全員）に適用します。</p>');
-    out.push('<div class="preset-grid">' +
-      '<button class="btn small" data-act="preset-row">横一列</button>' +
-      '<button class="btn small" data-act="preset-col">縦一列</button>' +
-      '<button class="btn small" data-act="preset-v">V字</button>' +
-      '<button class="btn small" data-act="preset-arc">円形</button>' +
-      '<button class="btn small" data-act="preset-block">ブロック</button>' +
-      '<button class="btn small" data-act="preset-auto">自動整列</button>' +
-    '</div>');
-    out.push('<button class="btn small" data-act="copy-prev" style="width:100%;" '+(sceneIndex(sc.id)<=0?'disabled':'')+'>直前のシーンの配置にセット</button>');
+    out.push('<details class="collapse"><summary>配置のプリセット</summary>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">' +
+      '<p class="empty-hint" style="margin:0;">選択中のコマ（未選択なら出演中の全員）に適用します。</p>' +
+      '<div class="preset-grid">' +
+        '<button class="btn small" data-act="preset-row">横一列</button>' +
+        '<button class="btn small" data-act="preset-col">縦一列</button>' +
+        '<button class="btn small" data-act="preset-v">V字</button>' +
+        '<button class="btn small" data-act="preset-arc">円形</button>' +
+        '<button class="btn small" data-act="preset-block">ブロック</button>' +
+        '<button class="btn small" data-act="preset-auto">自動整列</button>' +
+      '</div>' +
+      '<button class="btn small" data-act="copy-prev" style="width:100%;" '+(sceneIndex(sc.id)<=0?'disabled':'')+'>直前のシーンの配置にセット</button>' +
+      '</div>' +
+    '</details>');
     out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">グループ化</h2>');
     out.push('<button class="btn small" data-act="group-toggle" style="width:100%;" '+(selIds.length<2?'disabled':'')+'>選択中をグループ化／解除</button>');
     out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">スタンツの種類</h2>');
-    out.push('<select id="stuntTypeSelect" style="width:100%;border:1px solid var(--border);background:var(--surface);padding:6px 8px;border-radius:7px;">' +
-      STUNT_TYPE_ORDER.map(function(k){ return '<option value="'+k+'">'+STUNT_TYPES[k].label+'</option>'; }).join('') +
-    '</select>');
-    out.push('<button class="btn small primary" data-act="apply-stunt" style="width:100%;" '+(selIds.length<2?'disabled':'')+'>選択中を新しいスタンツ隊列にする</button>');
+    out.push('<p class="empty-hint" style="margin:0;">'+(selIds.length<2?'コマを2つ以上選択してから技を選ぶと新しいスタンツになります。':'技を選ぶと選択中のコマで新しいスタンツを作成します。')+'</p>');
+    out.push(renderStuntPictoPicker({ act:'create-stunt-pick', disabled: selIds.length<2 }));
     var stuntGroups = stuntGroupsOf(sc);
     if(stuntGroups.length){
       out.push('<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">' +
@@ -1507,9 +1538,7 @@
               '<button class="btn small ghost icon" type="button" data-act="stunt-list-select" data-gid="'+g.id+'" title="このスタンツを選択">◎</button>' +
             '</div>' +
             '<p class="empty-hint" style="margin:0;">'+escapeHtml(groupLabel(g))+'</p>' +
-            '<select data-act="stunt-list-type" data-gid="'+g.id+'" style="width:100%;border:1px solid var(--border);background:var(--surface);padding:5px 7px;border-radius:6px;">' +
-              STUNT_TYPE_ORDER.map(function(k){ return '<option value="'+k+'" '+(g.stuntType===k?'selected':'')+'>'+STUNT_TYPES[k].label+'</option>'; }).join('') +
-            '</select>' +
+            renderStuntPictoPicker({ currentVal:g.stuntType, act:'stunt-list-pick', extraAttrs:'data-gid="'+g.id+'"' }) +
             '<div style="display:flex;gap:6px;">' +
               '<button class="btn small ghost" type="button" data-act="open-drawer" data-gid="'+g.id+'" style="flex:1;">構成を編集</button>' +
               '<button class="btn small danger ghost" type="button" data-act="stunt-list-ungroup" data-gid="'+g.id+'" style="flex:1;">解除</button>' +
@@ -1540,7 +1569,7 @@
     out.push('<button class="btn small danger" data-act="sel-remove" style="width:100%;" '+(!selIds.length?'disabled':'')+'>選択コマをこのシーンから削除</button>');
     out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">コマの大きさ</h2>');
-    out.push('<div class="range-row"><input type="range" id="komaScale" min="60" max="140" value="'+(state.stage.komaScale||100)+'"><span class="mono" id="komaScaleVal" style="width:38px;">'+(state.stage.komaScale||100)+'%</span></div>');
+    out.push('<div class="range-row"><input type="range" id="komaScale" min="60" max="220" value="'+(state.stage.komaScale||100)+'"><span class="mono" id="komaScaleVal" style="width:38px;">'+(state.stage.komaScale||100)+'%</span></div>');
     out.push(toggleRow('snapGrid','グリッドスナップ', state.stage.snapGrid));
     out.push('<hr class="divider">');
     out.push('<div class="legend">' + PART_ORDER.map(function(k){ return legendItem(PART_DEFS[k].hue, PART_DEFS[k].label); }).join('') + '</div>');
@@ -1608,7 +1637,7 @@
     out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">ガイド線</h2>');
     out.push(toggleRow('showGrid','格子線を追加', st.showGrid));
-    out.push(toggleRow('showCenter','中央線を追加', st.showCenter));
+    out.push(toggleRow('showCenter','中央線を追加（前後4分割線つき）', st.showCenter));
     out.push(toggleRow('showFrontNumbers','正面の位置番号', st.showFrontNumbers));
     out.push(toggleRow('showDepthNumbers','奥行きの位置番号', st.showDepthNumbers));
     out.push(toggleRow('showDiagonal','対角線', st.showDiagonal));
@@ -2030,10 +2059,14 @@
       track.addEventListener('pointercancel', function(){ dragging=false; ui.audioScrubbing=false; hideTooltip(); });
     })();
     on('audioAddSceneBtn','click', function(){ addScene({ startSec: playbackTime() }); });
-    on('countSplitOpenBtn','click', function(){ ui.countSplit = {open:true, markA:null, markB:null}; render(); });
-    on('countSplitCloseBtn','click', function(){ ui.countSplit = {open:false, markA:null, markB:null}; render(); });
-    on('markABtn','click', function(){ ui.countSplit.markA = playbackTime(); ui.countSplit.markB = null; render(); });
-    on('markBBtn','click', function(){ ui.countSplit.markB = playbackTime(); render(); });
+    on('countSplitOpenBtn','click', function(){ ui.countSplit = {open:true, bpm:ui.countSplit?ui.countSplit.bpm:null, markA:null}; render(); });
+    on('countSplitCloseBtn','click', function(){ ui.countSplit = {open:false, bpm:null, markA:null}; render(); });
+    on('markABtn','click', function(){ ui.countSplit.markA = playbackTime(); render(); });
+    on('countSplitBpm','change', function(){
+      var v = parseFloat(this.value);
+      ui.countSplit.bpm = (v>0) ? v : null;
+      render();
+    });
     on('generateCountScenesBtn','click', function(){ generateCountScenes(); });
     on('switchToYtBtn','click', function(){
       pushHistory();
@@ -2119,9 +2152,9 @@
     onAll('[data-act="preset-auto"]','click', function(){ pushHistory(); autoArrangeAll(currentScene()); markDirty(); render(); });
     onAll('[data-act="copy-prev"]','click', function(){ copyPreviousArrangement(currentScene()); });
     onAll('[data-act="group-toggle"]','click', function(){ toggleGroup(selectedPresentIds(), currentScene()); });
-    onAll('[data-act="apply-stunt"]','click', function(){
-      var sel = document.getElementById('stuntTypeSelect');
-      arrangeStunt(selectedPresentIds(), currentScene(), sel?sel.value:STUNT_TYPE_ORDER[0]);
+    onAll('[data-act="create-stunt-pick"]','click', function(){
+      if(this.disabled) return;
+      arrangeStunt(selectedPresentIds(), currentScene(), this.getAttribute('data-stunt-key'));
     });
     onAll('[data-act="open-drawer"]','click', function(){ ui.stuntDrawerGroupId=this.getAttribute('data-gid'); render(); });
     onAll('[data-act="stunt-list-select"]','click', function(){
@@ -2129,10 +2162,10 @@
       var g = findGroupById(sc, this.getAttribute('data-gid'));
       if(g){ ui.selectedIds = g.memberIds.slice(); render(); }
     });
-    onAll('[data-act="stunt-list-type"]','change', function(){
+    onAll('[data-act="stunt-list-pick"]','click', function(){
       var sc = currentScene();
       var g = findGroupById(sc, this.getAttribute('data-gid'));
-      if(g) changeStuntType(g, sc, this.value);
+      if(g) changeStuntType(g, sc, this.getAttribute('data-stunt-key'));
     });
     onAll('[data-act="stunt-list-ungroup"]','click', function(){
       var sc = currentScene();
@@ -2349,12 +2382,12 @@
   }
   function generateCountScenes(){
     var cs = ui.countSplit;
-    if(!cs || cs.markA==null || cs.markB==null || cs.markB<=cs.markA) return;
-    var interval = cs.markB - cs.markA;
+    if(!cs || !(cs.bpm>0) || cs.markA==null) return;
+    var interval = 60/cs.bpm*8;
     var dur = playbackDuration();
     var n = Math.max(0, Math.floor((dur - cs.markA)/interval)) + 1;
     if(n<1) return;
-    if(!confirm('『'+fmtAudioTime(cs.markA)+'』から'+interval.toFixed(2)+'秒（8カウント）間隔で、シーンを'+n+'個追加します。よろしいですか？')) return;
+    if(!confirm('『'+fmtAudioTime(cs.markA)+'』からBPM'+cs.bpm+'（8カウント='+interval.toFixed(2)+'秒）間隔で、シーンを'+n+'個追加します。よろしいですか？')) return;
     pushHistory();
     var baseSc = currentScene();
     var idx = baseSc ? sceneIndex(baseSc.id) : state.scenes.length-1;
@@ -2374,7 +2407,7 @@
       if(i===0) firstNewId = ns.id;
     }
     state.currentSceneId = firstNewId;
-    ui.countSplit = {open:false, markA:null, markB:null};
+    ui.countSplit = {open:false, bpm:null, markA:null};
     markDirty(); render();
   }
 
