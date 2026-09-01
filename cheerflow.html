@@ -22,7 +22,7 @@
   }
 
   *{box-sizing:border-box;}
-  html,body{height:100%;}
+  html,body{height:100%; overflow:hidden; overscroll-behavior:none; }
   body{
     margin:0; background:var(--bg); color:var(--text);
     font-family:'Manrope',system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
@@ -79,7 +79,7 @@
   }
   .pill .dot{ width:9px; height:9px; border-radius:50%; }
   .pill.off{ opacity:.4; }
-  details.collapse > summary{ cursor:pointer; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:700; padding:2px 0; }
+  details.collapse > summary{ cursor:pointer; font-family:'Oswald',system-ui,sans-serif; font-size:12px; text-transform:uppercase; letter-spacing:.02em; color:var(--text); font-weight:700; padding:2px 0; }
 
   /* ---------- home screen ---------- */
   .home-screen{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; padding:40px 20px; overflow:auto; }
@@ -183,18 +183,22 @@
   .transport-row{ display:flex; gap:6px; align-items:stretch; }
   .transport-row #audioPlayBtn{ flex:1; }
 
-  .stage-panel{ display:flex; flex-direction:column; min-height:0; padding:12px 14px; gap:10px; overflow:auto; }
+  .stage-panel{ display:flex; flex-direction:column; align-items:center; min-height:0; min-width:0; padding:12px 14px; gap:10px; overflow:auto; }
   .sel-toolbar{
     display:flex; gap:6px; flex-wrap:wrap; align-items:center; background:var(--surface-2); border:1px solid var(--border);
     border-radius:10px; padding:7px 9px;
   }
   .sel-toolbar .count{ font-size:12px; color:var(--text-muted); font-weight:700; margin-right:4px; }
-  .stage-frame{ position:relative; width:100%; max-width:900px; margin:0 auto; }
+  .stage-frame{ position:relative; margin:0 auto; flex:0 0 auto; }
+  .scene-memo-inline{
+    width:100%; max-width:900px; min-height:44px; border:1px solid var(--border); background:var(--surface);
+    border-radius:9px; padding:8px 10px; font-size:12px; resize:vertical; flex:0 0 auto;
+  }
   .stage-svg{ width:100%; height:auto; aspect-ratio:10/7; display:block; background:var(--floor-bg); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); user-select:none; }
   .koma{ cursor:grab; touch-action:none; }
   .koma:active{ cursor:grabbing; }
 
-  .side-panel{ border-left:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; min-height:0; }
+  .side-panel{ border-left:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; min-height:0; min-width:0; overflow:hidden; }
   .side-tabs{ display:flex; border-bottom:1px solid var(--border); }
   .side-tab-btn{
     flex:1; border:none; background:transparent; padding:10px 4px; font-family:'Oswald'; font-weight:700; font-size:11px;
@@ -237,6 +241,10 @@
   .stunt-picto-btn.active span{ color:var(--text); }
   .stunt-picto-btn svg{ display:block; }
   .stunt-picto-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .board-popover{ position:fixed; z-index:40; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); padding:8px; max-width:min(280px,90vw); }
+  .board-popover-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px; font-size:11px; font-weight:700; color:var(--text-muted); }
+  .board-popover-head button{ border:none; background:transparent; cursor:pointer; color:var(--text-muted); font-size:14px; line-height:1; padding:2px; }
+  .board-popover .stunt-picto-picker{ max-width:260px; }
 
   /* ---------- footer scene strip ---------- */
   .footer-strip{
@@ -346,21 +354,41 @@
      縦方向のoffsetは横方向のspacingと同じ数値でも実際の間隔(VB単位)が7/10倍狭くなる。
      コマ直径(48 VB単位)を下回らないよう、topOffset/spotterOffsetは13以上を確保している。 */
   var STUNT_TYPES = {
-    stand:         { label:'スタンド',           baseSpacing:5, handsSpacing:6, topOffset:14, spotterOffset:14 },
-    halfup:        { label:'ハーフアップ',       baseSpacing:5, handsSpacing:6, topOffset:13, spotterOffset:13 },
-    fullup:        { label:'フルアップ',         baseSpacing:6, handsSpacing:7, topOffset:20, spotterOffset:17 },
-    extension:     { label:'エクステンション',   baseSpacing:6, handsSpacing:7, topOffset:19, spotterOffset:17 },
-    liberty:       { label:'リバティ',           baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
-    arabesque:     { label:'アラベスク',         baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
-    heel:          { label:'ヒール',             baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
-    scorpion:      { label:'スコーピオン',       baseSpacing:5, handsSpacing:6, topOffset:17, spotterOffset:15 },
-    shoulderstand: { label:'ショルダースタンド', baseSpacing:5, handsSpacing:6, topOffset:14, spotterOffset:14 },
-    elevator:      { label:'エレベーター',       baseSpacing:5, handsSpacing:6, topOffset:15, spotterOffset:14 },
-    pyramid:       { label:'ピラミッド',         baseSpacing:5, handsSpacing:6, topOffset:16, spotterOffset:15 },
-    sidebyside:    { label:'サイドサイ',         baseSpacing:5, handsSpacing:6, topOffset:16, spotterOffset:15 },
-    stack:         { label:'スタック',           baseSpacing:4, handsSpacing:5, topOffset:13, spotterOffset:13 }
+    stand:         { label:'スタンド',           spacing:5 },
+    halfup:        { label:'ハーフアップ',       spacing:5 },
+    fullup:        { label:'フルアップ',         spacing:6 },
+    extension:     { label:'エクステンション',   spacing:6 },
+    liberty:       { label:'リバティ',           spacing:5 },
+    arabesque:     { label:'アラベスク',         spacing:5 },
+    heel:          { label:'ヒール',             spacing:5 },
+    scorpion:      { label:'スコーピオン',       spacing:5 },
+    shoulderstand: { label:'ショルダースタンド', spacing:5 },
+    elevator:      { label:'エレベーター',       spacing:5 },
+    pyramid:       { label:'ピラミッド',         spacing:5 },
+    sidebyside:    { label:'サイドサイ',         spacing:5 },
+    stack:         { label:'スタック',           spacing:4 }
   };
   var STUNT_TYPE_ORDER = ['stand','halfup','fullup','extension','liberty','arabesque','heel','scorpion','shoulderstand','elevator','pyramid','sidebyside','stack'];
+  /* 人数ごとに無駄なスペースが出ないよう幾何学的に配置する（3人=正三角形、4人=ひし形、5人=台形、6人以上=同心円状） */
+  function stuntShapeOffsets(n, unit){
+    var h3 = unit*Math.sqrt(3)/2;
+    if(n<=1) return [[0,0]];
+    if(n===2) return [[0,-unit/2],[0,unit/2]];
+    if(n===3) return [[0,-h3*2/3],[-unit/2,h3/3],[unit/2,h3/3]];
+    if(n===4) return [[0,-unit],[unit,0],[0,unit],[-unit,0]];
+    if(n===5) return [[-unit/2,-unit*0.6],[unit/2,-unit*0.6],[-unit,unit*0.6],[0,unit*0.6],[unit,unit*0.6]];
+    var pts = [[0,0]];
+    var ring = 1;
+    while(pts.length<n){
+      var count = Math.min(n-pts.length, 6*ring);
+      for(var i=0;i<count;i++){
+        var angle = 2*Math.PI*i/count - Math.PI/2;
+        pts.push([Math.cos(angle)*unit*ring, Math.sin(angle)*unit*ring]);
+      }
+      ring++;
+    }
+    return pts.slice(0,n);
+  }
 
   function svgPicto(inner){
     return '<g fill="none" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round">'+inner+'</g>';
@@ -477,7 +505,7 @@
     present:false, presentIndex:0, presentPlaying:false, presentTimer:null,
     stuntDrawerGroupId:null, audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
-    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false
+    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false, boardPopover:null
   };
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
@@ -741,11 +769,6 @@
     }).filter(function(g){ return g.memberIds.length>0; });
   }
   function setPos(sc,id,x,y){ sc.positions[id] = { x:clampPct(x), y:clampPct(y) }; }
-  function distributeAlongX(sc, ids, cx, cy, spacing){
-    var n=ids.length; if(!n) return;
-    var start = cx - spacing*(n-1)/2;
-    ids.forEach(function(id,i){ setPos(sc,id, start+i*spacing, cy); });
-  }
   function autoComposition(ids){
     var pool = ids.slice();
     var comp = {top:null, base:[], spotter:null, hands:[]};
@@ -761,10 +784,17 @@
     var comp = group.composition;
     var t = STUNT_TYPES[group.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
     var scale = (state.stage.komaScale||100)/100;
-    if(comp.top) setPos(sc, comp.top, center.x, center.y-t.topOffset*scale);
-    distributeAlongX(sc, comp.hands, center.x, center.y-8*scale, t.handsSpacing*scale);
-    distributeAlongX(sc, comp.base, center.x, center.y+8*scale, t.baseSpacing*scale);
-    if(comp.spotter) setPos(sc, comp.spotter, center.x, center.y+t.spotterOffset*scale);
+    var unit = (t.spacing||5)*10*scale;
+    var orderedIds = [];
+    if(comp.top) orderedIds.push(comp.top);
+    (comp.hands||[]).forEach(function(id){ orderedIds.push(id); });
+    (comp.base||[]).forEach(function(id){ orderedIds.push(id); });
+    if(comp.spotter) orderedIds.push(comp.spotter);
+    var pts = stuntShapeOffsets(orderedIds.length, unit).slice().sort(function(a,b){ return a[1]-b[1]; });
+    orderedIds.forEach(function(id, i){
+      var off = pts[i];
+      setPos(sc, id, center.x + off[0]/10, center.y + off[1]/7);
+    });
   }
 
   function arrangeRow(ids, sc){
@@ -967,10 +997,15 @@
       }
     }
     if(st.showCenter){
-      g.push('<line x1="'+(VB_W/2)+'" y1="0" x2="'+(VB_W/2)+'" y2="'+VB_H+'" style="stroke:var(--hue-teal);stroke-width:2;stroke-dasharray:9 6;opacity:.9;"></line>');
+      [1,2,3].forEach(function(k){
+        var gx = VB_W*k/4;
+        var mainLine = k===2;
+        g.push('<line x1="'+gx+'" y1="0" x2="'+gx+'" y2="'+VB_H+'" style="stroke:var(--hue-teal);stroke-width:'+(mainLine?2:1.5)+';stroke-dasharray:9 6;opacity:'+(mainLine?.9:.7)+';"></line>');
+      });
       [1,2,3].forEach(function(k){
         var gy = VB_H*k/4;
-        g.push('<line x1="0" y1="'+gy+'" x2="'+VB_W+'" y2="'+gy+'" style="stroke:var(--hue-teal);stroke-width:1.5;stroke-dasharray:9 6;opacity:.7;"></line>');
+        var mainLine = k===2;
+        g.push('<line x1="0" y1="'+gy+'" x2="'+VB_W+'" y2="'+gy+'" style="stroke:var(--hue-teal);stroke-width:'+(mainLine?2:1.5)+';stroke-dasharray:9 6;opacity:'+(mainLine?.9:.7)+';"></line>');
       });
     }
     if(st.showDiagonal){
@@ -1052,6 +1087,40 @@
       }).join('') +
     '</div>';
   }
+  function renderBoardPopover(){
+    var p = ui.boardPopover;
+    if(!p) return '';
+    var px = Math.max(8, Math.min(p.x, window.innerWidth-280));
+    var py = Math.max(8, Math.min(p.y, window.innerHeight-180));
+    var style = 'left:'+px+'px;top:'+py+'px;';
+    if(p.type==='stunt'){
+      var sc = currentScene();
+      var g = findGroupById(sc, p.gid);
+      if(!g) return '';
+      return '<div class="board-popover" style="'+style+'">' +
+        '<div class="board-popover-head"><span>技を選択</span><button type="button" data-act="board-popover-close">✕</button></div>' +
+        renderStuntPictoPicker({ currentVal:g.stuntType, act:'board-stunt-pick', extraAttrs:'data-gid="'+g.id+'"' }) +
+      '</div>';
+    }
+    if(p.type==='tumbleMenu'){
+      return '<div class="board-popover" style="'+style+'">' +
+        '<button type="button" class="btn small" data-act="board-tumble-open">タンブリング</button>' +
+      '</div>';
+    }
+    if(p.type==='tumbleSkills'){
+      var sc2 = currentScene();
+      var pos = sc2.positions[p.memberId];
+      var cur = pos ? pos.tumbleSkill : '';
+      return '<div class="board-popover" style="'+style+'">' +
+        '<div class="board-popover-head"><span>タンブリングの技</span><button type="button" data-act="board-popover-close">✕</button></div>' +
+        '<div class="stunt-picto-picker">' +
+          '<button type="button" class="stunt-picto-btn'+(!cur?' active':'')+'" data-act="board-tumble-pick" data-skill="" style="min-width:36px;">なし</button>' +
+          TUMBLE_SKILL_ORDER.map(function(k){ return '<button type="button" class="stunt-picto-btn'+(cur===k?' active':'')+'" data-act="board-tumble-pick" data-skill="'+k+'">'+escapeHtml(TUMBLE_SKILLS[k])+'</button>'; }).join('') +
+        '</div>' +
+      '</div>';
+    }
+    return '';
+  }
   function stuntGroupsOf(scene){
     return (scene.groups||[]).filter(function(g){ return g.type==='stunt' && g.memberIds.length; });
   }
@@ -1083,7 +1152,7 @@
       var placeRight = (bb.x2+pad+10+bw) <= (VB_W-10);
       var bx = placeRight ? (bb.x2+pad+10) : (bb.x1-pad-10-bw);
       var by = cy - bh/2;
-      return '<g transform="translate('+bx+','+by+')" pointer-events="none">' +
+      return '<g class="stunt-badge" data-gid="'+g.id+'" transform="translate('+bx+','+by+')" style="cursor:pointer;">' +
         '<rect width="'+bw+'" height="'+bh+'" rx="9" style="fill:var(--surface);stroke:var(--border);stroke-width:1.2;opacity:.97;"></rect>' +
         '<g transform="translate('+(bw/2-13)+',7) scale(1.3)">'+picto+'</g>' +
         '<text x="'+(bw/2)+'" y="'+(bh-8)+'" text-anchor="middle" font-size="11" font-weight="700" style="fill:var(--text);font-family:Manrope,sans-serif;">'+escapeHtml(t.label)+'</text>' +
@@ -1134,15 +1203,46 @@
         renderFooterStrip() +
       '</div>' +
       (ui.stuntDrawerGroupId ? renderStuntDrawer() : '') +
+      (ui.boardPopover ? renderBoardPopover() : '') +
       (ui.present ? renderPresentOverlay() : '');
 
     wireEvents();
     if(ui.present) wirePresentEvents();
     positionYtPortal();
+    fitStageFrame();
     if(state.audio.sourceType==='youtube' && state.audio.youtubeUrl && !ui.ytEmbedBlocked && !ui.present){
       loadYoutubeVideo(state.audio.youtubeUrl);
     }
   }
+  function fitStageFrame(){
+    var panel = document.querySelector('.stage-panel');
+    var frame = document.querySelector('.stage-frame');
+    if(!panel || !frame) return;
+    frame.style.width = ''; frame.style.height = '';
+    var panelRect = panel.getBoundingClientRect();
+    var cs = getComputedStyle(panel);
+    var padV = (parseFloat(cs.paddingTop)||0) + (parseFloat(cs.paddingBottom)||0);
+    var padH = (parseFloat(cs.paddingLeft)||0) + (parseFloat(cs.paddingRight)||0);
+    var gap = parseFloat(cs.rowGap||cs.gap)||0;
+    var siblingsH = 0, siblingCount = 0;
+    Array.prototype.forEach.call(panel.children, function(ch){
+      if(ch===frame) return;
+      siblingsH += ch.getBoundingClientRect().height;
+      siblingCount++;
+    });
+    var availH = panelRect.height - padV - siblingsH - gap*siblingCount;
+    var availW = panelRect.width - padH;
+    var w = availW, h = w*0.7;
+    if(h > availH){ h = Math.max(80, availH); w = h/0.7; }
+    frame.style.width = Math.max(160, w)+'px';
+    frame.style.height = Math.max(112, h)+'px';
+  }
+  window.addEventListener('resize', function(){ fitStageFrame(); positionYtPortal(); });
+  document.addEventListener('pointerdown', function(e){
+    if(!ui.boardPopover) return;
+    if(e.target.closest && (e.target.closest('.board-popover') || e.target.closest('.stage-main'))) return;
+    ui.boardPopover = null; render();
+  });
 
   function saveStatusText(){
     if(ui.isReadOnly) return '閲覧専用';
@@ -1319,7 +1419,7 @@
     dur = dur||0;
     var zoom = ui.tlZoom||60;
     var w = Math.max(1, dur) * zoom;
-    var step = zoom>=150 ? 1 : zoom>=60 ? 2 : zoom>=25 ? 5 : zoom>=10 ? 15 : 30;
+    var step = zoom>=150 ? 1 : zoom>=60 ? 2 : zoom>=25 ? 5 : zoom>=10 ? 15 : zoom>=3 ? 30 : 60;
     var labels = '';
     for(var t=0; t<=dur; t+=step){
       labels += '<span class="tl-label" style="left:'+(t*zoom)+'px">'+fmtAudioTime(t).replace(/\.0$/,'')+'</span>';
@@ -1467,6 +1567,7 @@
     }
     return '<div class="stage-panel">' +
       '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+'</div>' +
+      '<textarea class="scene-memo-inline" id="sceneMemoInline" placeholder="このシーンのメモ（動きの説明やキュー、注意点など）">'+escapeHtml(sc.note||'')+'</textarea>' +
       selToolbar +
     '</div>';
   }
@@ -1637,7 +1738,7 @@
     out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">ガイド線</h2>');
     out.push(toggleRow('showGrid','格子線を追加', st.showGrid));
-    out.push(toggleRow('showCenter','中央線を追加（前後4分割線つき）', st.showCenter));
+    out.push(toggleRow('showCenter','中央線を追加（前後左右4分割）', st.showCenter));
     out.push(toggleRow('showFrontNumbers','正面の位置番号', st.showFrontNumbers));
     out.push(toggleRow('showDepthNumbers','奥行きの位置番号', st.showDepthNumbers));
     out.push(toggleRow('showDiagonal','対角線', st.showDiagonal));
@@ -2023,7 +2124,7 @@
       playbackSeek(t); updateTimelineUI(t, playbackDuration());
     });
     on('ytAudioOnlyBtn','click', function(){ ui.ytAudioOnly = !ui.ytAudioOnly; render(); });
-    on('tlZoomOut','click', function(){ ui.tlZoom = Math.max(8, (ui.tlZoom||60)/1.5); render(); });
+    on('tlZoomOut','click', function(){ ui.tlZoom = Math.max(0.3, (ui.tlZoom||60)/1.5); render(); });
     on('tlZoomIn','click', function(){ ui.tlZoom = Math.min(600, (ui.tlZoom||60)*1.5); render(); });
     on('tlToPlayhead','click', function(){
       var sc = document.getElementById('tlScroll');
@@ -2174,6 +2275,27 @@
       sc.groups = (sc.groups||[]).filter(function(g){ return g.id!==gid; });
       markDirty(); render();
     });
+    onAll('[data-act="board-popover-close"]','click', function(){ ui.boardPopover=null; render(); });
+    onAll('[data-act="board-stunt-pick"]','click', function(){
+      var sc = currentScene();
+      var g = findGroupById(sc, this.getAttribute('data-gid'));
+      ui.boardPopover = null;
+      if(g) changeStuntType(g, sc, this.getAttribute('data-stunt-key'));
+      else render();
+    });
+    onAll('[data-act="board-tumble-open"]','click', function(){ ui.boardPopover.type='tumbleSkills'; render(); });
+    onAll('[data-act="board-tumble-pick"]','click', function(){
+      var sc = currentScene();
+      var id = ui.boardPopover.memberId;
+      var skill = this.getAttribute('data-skill');
+      ui.boardPopover = null;
+      if(sc.positions[id]){
+        pushHistory();
+        if(skill) sc.positions[id].tumbleSkill = skill; else delete sc.positions[id].tumbleSkill;
+        markDirty();
+      }
+      render();
+    });
     on('tumbleSkillSelect','change', function(){
       var sc = currentScene();
       var id = ui.selectedIds[0];
@@ -2211,6 +2333,7 @@
       markDirty(); render();
     });
     on('sceneNote','change', function(){ pushHistory(); currentScene().note=this.value; markDirty(); render(); });
+    on('sceneMemoInline','change', function(){ pushHistory(); currentScene().note=this.value; markDirty(); render(); });
     on('toggleIncoming','change', function(){ pushHistory(); currentScene().showIncomingPath=this.checked; markDirty(); render(); });
     on('toggleActualPath','change', function(){ pushHistory(); currentScene().useActualPath=this.checked; markDirty(); render(); });
     onAll('[data-act="count-mark"]','click', function(){
@@ -2422,6 +2545,8 @@
     var origPositions = {};
     var marqueeRect = null;
     var didDrag = false;
+    var longPressTimer = null;
+    function clearLongPress(){ if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; } }
 
     function svgPoint(clientX, clientY){
       var pt = svg.createSVGPoint();
@@ -2439,8 +2564,16 @@
 
     svg.addEventListener('pointerdown', function(e){
       if(e.button===2) return;
+      var badgeEl = e.target.closest ? e.target.closest('.stunt-badge') : null;
+      if(badgeEl){
+        ui.boardPopover = { type:'stunt', gid:badgeEl.getAttribute('data-gid'), x:e.clientX, y:e.clientY };
+        render();
+        return;
+      }
+      if(ui.boardPopover){ ui.boardPopover = null; render(); return; }
       var el = e.target.closest ? e.target.closest('.koma') : null;
       didDrag = false;
+      clearLongPress();
       var sc = currentScene();
       if(el){
         var id = el.getAttribute('data-member-id');
@@ -2460,6 +2593,17 @@
         if(sc.useActualPath){ dragIds.forEach(function(mid){ sc.positions[mid].path = [{x:sc.positions[mid].x,y:sc.positions[mid].y}]; }); }
         try{ svg.setPointerCapture(e.pointerId); }catch(err){}
         e.preventDefault();
+        if(!grp){
+          var lpClientX=e.clientX, lpClientY=e.clientY;
+          longPressTimer = setTimeout(function(){
+            longPressTimer = null;
+            if(mode==='drag' && !didDrag){
+              mode = null; dragIds=[]; dragStart=null;
+              ui.boardPopover = { type:'tumbleMenu', memberId:id, x:lpClientX, y:lpClientY };
+              render();
+            }
+          }, 550);
+        }
       } else {
         mode = 'marquee';
         dragStart = svgPoint(e.clientX, e.clientY);
@@ -2477,7 +2621,7 @@
 
     svg.addEventListener('pointermove', function(e){
       if(mode==='drag'){
-        if(!didDrag){ pushHistory(); didDrag = true; }
+        if(!didDrag){ pushHistory(); didDrag = true; clearLongPress(); }
         var sc = currentScene();
         var p = svgPoint(e.clientX, e.clientY);
         var dx = (p.x-dragStart.x)/VB_W*100, dy=(p.y-dragStart.y)/VB_H*100;
@@ -2500,6 +2644,7 @@
     });
 
     function endInteraction(){
+      clearLongPress();
       if(mode==='marquee' && marqueeRect){
         var x = parseFloat(marqueeRect.getAttribute('x')), y=parseFloat(marqueeRect.getAttribute('y'));
         var w = parseFloat(marqueeRect.getAttribute('width')), h=parseFloat(marqueeRect.getAttribute('height'));
