@@ -189,13 +189,16 @@
     border-radius:10px; padding:7px 9px;
   }
   .sel-toolbar .count{ font-size:12px; color:var(--text-muted); font-weight:700; margin-right:4px; }
-  .stage-frame{ position:relative; margin:0 auto; flex:0 0 auto; }
+  .stage-frame{ position:relative; flex:0 0 auto; }
+  .stage-row{ display:flex; flex-direction:row; gap:12px; align-items:flex-start; justify-content:center; width:100%; min-height:0; }
+  .count-notes-side{ display:flex; flex-direction:column; gap:6px; width:150px; flex:0 0 150px; max-height:100%; overflow:auto; }
+  .count-notes-side h3{ font-size:11px; margin:0; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; font-family:'Oswald',system-ui,sans-serif; }
   .scene-memo-inline{
     width:100%; max-width:900px; min-height:44px; border:1px solid var(--border); background:var(--surface);
     border-radius:9px; padding:8px 10px; font-size:12px; resize:vertical; flex:0 0 auto;
   }
-  .stage-svg{ width:100%; height:auto; aspect-ratio:10/7; display:block; background:var(--floor-bg); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); user-select:none; }
-  .koma{ cursor:grab; touch-action:none; }
+  .stage-svg{ width:100%; height:auto; aspect-ratio:10/7; display:block; background:var(--floor-bg); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  .koma{ cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
   .koma:active{ cursor:grabbing; }
 
   .side-panel{ border-left:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; min-height:0; min-width:0; overflow:hidden; }
@@ -223,10 +226,11 @@
   .count-note-cell span{ font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--text-muted); font-size:11px; width:12px; }
   .count-note-cell input{ border:none; background:transparent; padding:2px; font-size:12px; width:100%; }
   .count-note-cell input:focus{ outline:none; }
-  .roster-row{ display:flex; gap:6px; align-items:center; }
-  .roster-row input{ flex:1; border:1px solid var(--border); background:var(--surface); padding:6px 8px; border-radius:7px; }
-  .roster-row input[type="color"]{ flex:0 0 32px; width:32px; height:32px; padding:2px; }
-  .roster-row select{ border:1px solid var(--border); background:var(--surface); padding:6px 8px; border-radius:7px; }
+  .roster-row{ display:flex; gap:4px; align-items:center; }
+  .roster-row input{ flex:1 1 0; min-width:0; border:1px solid var(--border); background:var(--surface); padding:6px 5px; border-radius:7px; font-size:12px; }
+  .roster-row input[type="color"]{ flex:0 0 26px; width:26px; height:26px; padding:2px; }
+  .roster-row select{ flex:0 0 64px; min-width:0; width:64px; border:1px solid var(--border); background:var(--surface); padding:5px 2px; border-radius:7px; font-size:11px; }
+  .roster-row .btn{ flex:0 0 auto; padding:6px 8px; }
   .stunt-list-row{ border:1px solid var(--border); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
   .stunt-list-row.active{ border-color:var(--accent); }
   .stunt-list-head{ display:flex; align-items:center; justify-content:space-between; }
@@ -353,11 +357,12 @@
   /* 縦方向の1%はVB_H(700)基準・横方向の1%はVB_W(1000)基準で物理サイズが異なるため、
      縦方向のoffsetは横方向のspacingと同じ数値でも実際の間隔(VB単位)が7/10倍狭くなる。
      コマ直径(48 VB単位)を下回らないよう、topOffset/spotterOffsetは13以上を確保している。 */
+  /* 技の種類による見た目のブレを防ぐため、間隔(spacing)は全種類で統一している */
   var STUNT_TYPES = {
     stand:         { label:'スタンド',           spacing:5 },
     halfup:        { label:'ハーフアップ',       spacing:5 },
-    fullup:        { label:'フルアップ',         spacing:6 },
-    extension:     { label:'エクステンション',   spacing:6 },
+    fullup:        { label:'フルアップ',         spacing:5 },
+    extension:     { label:'エクステンション',   spacing:5 },
     liberty:       { label:'リバティ',           spacing:5 },
     arabesque:     { label:'アラベスク',         spacing:5 },
     heel:          { label:'ヒール',             spacing:5 },
@@ -366,7 +371,7 @@
     elevator:      { label:'エレベーター',       spacing:5 },
     pyramid:       { label:'ピラミッド',         spacing:5 },
     sidebyside:    { label:'サイドサイ',         spacing:5 },
-    stack:         { label:'スタック',           spacing:4 }
+    stack:         { label:'スタック',           spacing:5 }
   };
   var STUNT_TYPE_ORDER = ['stand','halfup','fullup','extension','liberty','arabesque','heel','scorpion','shoulderstand','elevator','pyramid','sidebyside','stack'];
   /* 人数ごとに無駄なスペースが出ないよう幾何学的に配置する（3人=正三角形、4人=ひし形、5人=台形、6人以上=同心円状） */
@@ -1216,8 +1221,9 @@
   }
   function fitStageFrame(){
     var panel = document.querySelector('.stage-panel');
+    var row = document.querySelector('.stage-row');
     var frame = document.querySelector('.stage-frame');
-    if(!panel || !frame) return;
+    if(!panel || !row || !frame) return;
     frame.style.width = ''; frame.style.height = '';
     var panelRect = panel.getBoundingClientRect();
     var cs = getComputedStyle(panel);
@@ -1226,12 +1232,21 @@
     var gap = parseFloat(cs.rowGap||cs.gap)||0;
     var siblingsH = 0, siblingCount = 0;
     Array.prototype.forEach.call(panel.children, function(ch){
-      if(ch===frame) return;
+      if(ch===row) return;
       siblingsH += ch.getBoundingClientRect().height;
       siblingCount++;
     });
     var availH = panelRect.height - padV - siblingsH - gap*siblingCount;
-    var availW = panelRect.width - padH;
+    var rowRect = row.getBoundingClientRect();
+    var rowCs = getComputedStyle(row);
+    var rowGap = parseFloat(rowCs.columnGap||rowCs.gap)||0;
+    var rowSiblingsW = 0, rowSiblingCount = 0;
+    Array.prototype.forEach.call(row.children, function(ch){
+      if(ch===frame) return;
+      rowSiblingsW += ch.getBoundingClientRect().width;
+      rowSiblingCount++;
+    });
+    var availW = rowRect.width - rowSiblingsW - rowGap*rowSiblingCount;
     var w = availW, h = w*0.7;
     if(h > availH){ h = Math.max(80, availH); w = h/0.7; }
     frame.style.width = Math.max(160, w)+'px';
@@ -1271,7 +1286,7 @@
       '<div><div class="home-brand">Cheer<em>Flow</em></div><p class="home-tagline">スタント構成とルーティンの流れを組み立てるプランナー</p></div>' +
       '<div class="home-actions">' +
         '<button class="home-card" id="homeEditBtn" '+(hasProject?'':'disabled')+'>' +
-          '<h2>プロジェクトを編集</h2>' +
+          '<h2>プロジェクトを開く</h2>' +
           '<p>'+(hasProject ? escapeHtml(state.title||'無題のプロジェクト')+' ・ 全'+state.scenes.length+'シーン' : 'まだプロジェクトがありません')+'</p>' +
         '</button>' +
         '<button class="home-card primary" id="homeNewBtn">' +
@@ -1287,6 +1302,7 @@
     return '<div class="modal-backdrop" id="wizardBackdrop">' +
       '<div class="modal-box" role="dialog" aria-label="新規プロジェクト作成">' +
         '<h2>新規プロジェクト作成</h2>' +
+        '<div class="field"><label for="wizardTitle">構成名<span style="color:var(--danger);">*</span></label><input type="text" id="wizardTitle" placeholder="例: 2026年春 大会構成" required></div>' +
         '<div class="field"><label for="wizardCount">構成人数</label><input type="number" id="wizardCount" min="1" max="60" value="8"></div>' +
         '<div class="field"><label>音源</label>' +
           '<div class="toggle-btns">' +
@@ -1322,7 +1338,7 @@
     };
     members.forEach(function(m){ scene1.positions[m.id] = {x:50,y:50}; });
     state = {
-      hasProject:true, title:'新しいルーティン', members:members, scenes:[scene1], currentSceneId:scene1.id,
+      hasProject:true, title:opts.title||'新しいルーティン', members:members, scenes:[scene1], currentSceneId:scene1.id,
       stage: defaultStage(), projectMemo:'',
       audio: opts.audio || { dataUrl:'', name:'', sourceType:'file', youtubeUrl:'' },
       updatedAt:null
@@ -1359,6 +1375,13 @@
     });
     var create = document.getElementById('wizardCreate');
     if(create) create.addEventListener('click', function(){
+      var titleEl = document.getElementById('wizardTitle');
+      var title = titleEl ? titleEl.value.trim() : '';
+      if(!title){
+        alert('構成名を入力してください。');
+        if(titleEl) titleEl.focus();
+        return;
+      }
       var countEl = document.getElementById('wizardCount');
       var count = countEl ? parseInt(countEl.value,10) : 8;
       var audio;
@@ -1371,7 +1394,7 @@
         audio = { dataUrl:'', name:'', sourceType:'youtube', youtubeUrl:yt };
       }
       ui.wizardOpen=false;
-      createProject({ memberCount: count, audio: audio });
+      createProject({ title: title, memberCount: count, audio: audio });
     });
   }
 
@@ -1565,10 +1588,25 @@
         '<button class="btn small ghost icon" data-act="sel-clear">✕</button>' +
       '</div>';
     }
+    var countPanel = !ui.sidebarOpen ? renderCountNotesPanel(sc) : '';
     return '<div class="stage-panel">' +
-      '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+'</div>' +
+      '<div class="stage-row">' +
+        '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+'</div>' +
+        countPanel +
+      '</div>' +
       '<textarea class="scene-memo-inline" id="sceneMemoInline" placeholder="このシーンのメモ（動きの説明やキュー、注意点など）">'+escapeHtml(sc.note||'')+'</textarea>' +
       selToolbar +
+    '</div>';
+  }
+  function renderCountNotesPanel(sc){
+    var cn = sc.countNotes || {};
+    var cells = [];
+    for(var c=1;c<=8;c++){
+      cells.push('<div class="count-note-cell"><span>'+c+'</span><input type="text" data-act="count-note" data-c="'+c+'" value="'+escapeHtml(cn[c]||'')+'" placeholder="メモ"></div>');
+    }
+    return '<div class="count-notes-side">' +
+      '<h3>カウント別メモ</h3>' +
+      cells.join('') +
     '</div>';
   }
   function renderPresenceRow(sc){
