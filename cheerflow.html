@@ -82,7 +82,6 @@
   .home-screen{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; padding:40px 20px; overflow:auto; }
   .home-brand{ font-family:'Oswald'; font-weight:700; font-size:34px; letter-spacing:.03em; }
   .home-brand em{ font-style:normal; color:var(--accent); }
-  .home-tagline{ color:var(--text-muted); margin-top:-18px; font-size:14px; }
   .home-actions{ display:flex; gap:20px; flex-wrap:wrap; justify-content:center; max-width:640px; }
   .home-card{
     width:260px; text-align:left; border:1px solid var(--border); background:var(--surface); border-radius:var(--radius);
@@ -251,6 +250,8 @@
     background:var(--surface); display:flex; flex-direction:column;
   }
   .thumb-card.active{ border-color:var(--accent); }
+  .thumb-card.playing{ box-shadow:0 0 0 2px var(--hue-teal) inset; }
+  .thumb-card.playing::after{ content:'▶'; position:absolute; top:2px; left:2px; font-size:10px; color:var(--hue-teal); background:var(--surface); border-radius:4px; padding:0 3px; }
   .thumb-card .strip{ height:4px; }
   .thumb-card .mini{ width:100%; aspect-ratio:10/7; background:var(--floor-bg); }
   .thumb-card .label{ font-size:10px; padding:3px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:700; }
@@ -286,11 +287,18 @@
   /* ---------- print ---------- */
   #printArea{ display:none; }
   @media print{
+    @page{ size:A4 portrait; margin:8mm; }
     body > *:not(#printArea){ display:none !important; }
     #printArea{ display:block !important; }
-    .print-scene{ page-break-after:always; padding:16px 0; }
-    .print-scene h2{ font-size:16px; }
-    .print-scene .stage-svg{ width:100%; max-width:640px; }
+    .print-page{
+      display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(4,1fr); gap:6mm;
+      width:100%; height:277mm; page-break-after:always; overflow:hidden;
+    }
+    .print-cell{ border:1px solid #ccc; padding:3mm; display:flex; flex-direction:column; gap:2mm; overflow:hidden; min-height:0; }
+    .print-cell h3{ font-size:10px; margin:0; color:#111; flex:0 0 auto; }
+    .print-cell .stage-svg{ width:100%; height:auto; max-height:34mm; flex:0 0 auto; }
+    .print-cell .print-memo{ font-size:8.5px; color:#333; flex:0 0 auto; }
+    .print-cell .print-countnotes{ font-size:7.5px; color:#555; display:grid; grid-template-columns:1fr 1fr; gap:1mm; flex:1 1 auto; overflow:hidden; }
   }
 
   .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
@@ -611,6 +619,10 @@
     if(state.audio.sourceType==='youtube') return !(YT_PLAYER && YT_PLAYER.getPlayerState && YT_PLAYER.getPlayerState()===1);
     return AUDIO_EL.paused;
   }
+  function hasAudioSource(){
+    if(state.audio.sourceType==='youtube') return !!state.audio.youtubeUrl && !ui.ytEmbedBlocked;
+    return !!state.audio.dataUrl;
+  }
 
   function fmtAudioTime(sec){
     sec = sec||0;
@@ -622,6 +634,21 @@
     if(ph) ph.style.left = (t*(ui.tlZoom||60))+'px';
     var lbl = document.getElementById('audioTimeLabel');
     if(lbl) lbl.textContent = fmtAudioTime(t)+' / '+fmtAudioTime(dur||0);
+    updatePlayingHighlight(t);
+  }
+  function updatePlayingHighlight(t){
+    var activeId = null, activeIdx = -1;
+    for(var i=0;i<state.scenes.length;i++){
+      if(state.scenes[i].startSec!=null && state.scenes[i].startSec<=t){ activeId = state.scenes[i].id; activeIdx = i; }
+    }
+    var cards = document.querySelectorAll('.thumb-card');
+    Array.prototype.forEach.call(cards, function(c){
+      var on = activeId!=null && c.getAttribute('data-scene-id')===activeId;
+      c.classList.toggle('playing', on);
+    });
+    if(ui.present && !ui.presentTimer && activeIdx>=0 && activeIdx!==ui.presentIndex){
+      presentGo(activeIdx);
+    }
   }
   function sceneTimeDisplay(sc){
     if(sc.startSec!=null) return fmtAudioTime(sc.startSec).replace(/\.0$/,'')+'〜';
@@ -1211,7 +1238,7 @@
   function renderHomeScreen(){
     var hasProject = state.hasProject;
     return '<div class="home-screen">' +
-      '<div><div class="home-brand">Cheer<em>Flow</em></div><p class="home-tagline">スタント構成とルーティンの流れを組み立てるプランナー</p></div>' +
+      '<div><div class="home-brand">Cheer<em>Flow</em></div></div>' +
       '<div class="home-actions">' +
         '<button class="home-card" id="homeEditBtn" '+(hasProject?'':'disabled')+'>' +
           '<h2>プロジェクトを開く</h2>' +
@@ -1334,6 +1361,7 @@
         '<button data-act="exp-pdf">全シーン一覧をPDF（印刷）</button>' +
         '<button data-act="exp-png-current">現在のシーンをPNG</button>' +
         '<button data-act="exp-png-contact">コンタクトシート（全シーン1枚）</button>' +
+        '<button data-act="exp-png-contact-current">コンタクトシート（選択中の1シーン）</button>' +
         '<div class="grp-label">データ</div>' +
         '<button data-act="exp-json-export">プロジェクトをJSONで書き出す</button>' +
         '<input type="file" id="jsonImportInput" accept="application/json" class="visually-hidden">' +
@@ -1837,11 +1865,11 @@
       saveViaDownloads((sc.name||'scene')+'.png', blob);
     }).catch(function(){ alert('PNGの生成に失敗しました。'); });
   }
-  function exportContactSheetPng(){
-    var cols = Math.ceil(Math.sqrt(state.scenes.length));
-    var rows = Math.ceil(state.scenes.length/cols);
+  function exportContactSheet(scenes, filename){
+    var cols = Math.ceil(Math.sqrt(scenes.length));
+    var rows = Math.ceil(scenes.length/cols);
     var cw = 320, ch = Math.round(cw*VB_H/VB_W)+26;
-    var promises = state.scenes.map(function(sc){ return svgToPngBlob(standaloneSvg(sc), VB_W, VB_H); });
+    var promises = scenes.map(function(sc){ return svgToPngBlob(standaloneSvg(sc), VB_W, VB_H); });
     Promise.all(promises).then(function(blobs){
       var canvas = document.createElement('canvas');
       canvas.width = cols*cw; canvas.height = rows*ch;
@@ -1858,24 +1886,33 @@
           var x = c*cw, y = r*ch;
           ctx.drawImage(img, x, y, cw, cw*VB_H/VB_W);
           ctx.fillStyle = '#333'; ctx.font = '14px sans-serif';
-          ctx.fillText((i+1)+'. '+(state.scenes[i].name||''), x+4, y+ch-6);
+          ctx.fillText((i+1)+'. '+(scenes[i].name||''), x+4, y+ch-6);
         });
-        canvas.toBlob(function(blob){ saveViaDownloads('contact-sheet.png', blob); }, 'image/png');
+        canvas.toBlob(function(blob){ saveViaDownloads(filename, blob); }, 'image/png');
       });
     }).catch(function(){ alert('コンタクトシートの生成に失敗しました。'); });
   }
+  function exportContactSheetPng(){ exportContactSheet(state.scenes, 'contact-sheet.png'); }
+  function exportContactSheetCurrentPng(){ exportContactSheet([currentScene()], 'contact-sheet-'+(currentScene().name||'scene')+'.png'); }
   function exportPdfAllScenes(){
-    PRINT_AREA.innerHTML = state.scenes.map(function(sc, i){
-      var sect = SECTION_DEFS[sc.section] || SECTION_DEFS.transition;
-      var cn = sc.countNotes || {};
-      var cnLine = Object.keys(cn).filter(function(k){return cn[k];}).map(function(k){ return k+':'+cn[k]; }).join(' / ');
-      return '<div class="print-scene">' +
-        '<h2>'+(i+1)+'. '+escapeHtml(sc.name||'無題')+'</h2>' +
-        '<p>'+sect.label+' ・ '+escapeHtml(sceneTimeDisplay(sc))+'</p>' +
-        renderStageSvg(sc,{mini:false}).replace(' stage-main','') +
-        '<p>'+escapeHtml(sc.note||'')+'</p>' +
-        (cnLine ? '<p>'+escapeHtml(cnLine)+'</p>' : '') +
-      '</div>';
+    var PER_PAGE = 8;
+    var pages = [];
+    for(var i=0;i<state.scenes.length;i+=PER_PAGE){ pages.push(state.scenes.slice(i,i+PER_PAGE)); }
+    PRINT_AREA.innerHTML = pages.map(function(pageScenes, pageIdx){
+      var cells = pageScenes.map(function(sc, idxInPage){
+        var i = pageIdx*PER_PAGE+idxInPage;
+        var sect = SECTION_DEFS[sc.section] || SECTION_DEFS.transition;
+        var cn = sc.countNotes || {};
+        var cnCells = [];
+        for(var c=1;c<=8;c++){ cnCells.push('<div>'+c+': '+escapeHtml(cn[c]||'')+'</div>'); }
+        return '<div class="print-cell">' +
+          '<h3>'+(i+1)+'. '+escapeHtml(sc.name||'無題')+' ・ '+sect.label+' ・ '+escapeHtml(sceneTimeDisplay(sc))+'</h3>' +
+          renderStageSvg(sc,{mini:false}).replace(' stage-main','') +
+          '<div class="print-memo">'+escapeHtml(sc.note||'')+'</div>' +
+          '<div class="print-countnotes">'+cnCells.join('')+'</div>' +
+        '</div>';
+      }).join('');
+      return '<div class="print-page">'+cells+'</div>';
     }).join('');
     window.print();
   }
@@ -1907,7 +1944,16 @@
     on('titleInput','change', function(){ pushHistory(); state.title=this.value; markDirty(); render(); });
     on('undoBtn','click', undo);
     on('redoBtn','click', redo);
-    on('previewBtn','click', function(){ ui.present=true; ui.presentIndex=Math.max(0,sceneIndex(state.currentSceneId)); render(); });
+    on('previewBtn','click', function(){
+      ui.present=true; ui.presentIndex=Math.max(0,sceneIndex(state.currentSceneId));
+      if(hasAudioSource()){
+        var sc = state.scenes[ui.presentIndex];
+        if(sc && sc.startSec!=null) playbackSeek(sc.startSec);
+        if(playbackIsPaused()) playbackTogglePlay();
+        ui.presentPlaying = true;
+      }
+      render();
+    });
     on('saveBtn','click', handleSave);
     on('menuTabBtn','click', function(){ ui.sidebarOpen=!ui.sidebarOpen; render(); });
 
@@ -1930,6 +1976,7 @@
         if(act==='exp-pdf') exportPdfAllScenes();
         else if(act==='exp-png-current') exportCurrentPng();
         else if(act==='exp-png-contact') exportContactSheetPng();
+        else if(act==='exp-png-contact-current') exportContactSheetCurrentPng();
         else if(act==='exp-json-export') exportJson();
         else if(act==='exp-share-link') copyShareLink();
         else if(act==='exp-collab-link') alert('共同編集させたい相手には、このページ右上（アーティファクトの共有メニュー）から「編集者として共有」を選んでリンクを送ってください。同じURLでも、共有時の権限設定によって閲覧のみか編集可能かが決まります。');
@@ -2555,8 +2602,12 @@
     var fromIndex = ui.presentIndex;
     var shouldAnimate = (i===fromIndex+1) && !prefersReducedMotion();
     var fromScene = state.scenes[fromIndex];
-    ui.presentIndex=i; state.currentSceneId=state.scenes[i].id; render();
-    if(shouldAnimate && fromScene) runPresentTransitionAnimation(fromScene, state.scenes[i]);
+    var target = state.scenes[i];
+    if(hasAudioSource() && target.startSec!=null && Math.abs(playbackTime()-target.startSec)>0.5){
+      playbackSeek(target.startSec);
+    }
+    ui.presentIndex=i; state.currentSceneId=target.id; render();
+    if(shouldAnimate && fromScene) runPresentTransitionAnimation(fromScene, target);
   }
   function runPresentTransitionAnimation(fromScene, toScene){
     var svg = document.querySelector('.present-stage-wrap .stage-svg');
@@ -2595,6 +2646,12 @@
     });
   }
   function togglePresentPlay(){
+    if(hasAudioSource()){
+      playbackTogglePlay();
+      ui.presentPlaying = !playbackIsPaused();
+      render();
+      return;
+    }
     ui.presentPlaying = !ui.presentPlaying;
     if(ui.presentPlaying){
       ui.presentTimer = setInterval(function(){
@@ -2607,6 +2664,7 @@
   }
   function stopPresent(){
     if(ui.presentTimer) clearInterval(ui.presentTimer);
+    if(hasAudioSource() && !playbackIsPaused()) playbackTogglePlay();
     ui.present=false; ui.presentPlaying=false; document.onkeydown=null;
     render();
   }
