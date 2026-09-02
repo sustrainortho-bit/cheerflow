@@ -62,7 +62,6 @@
   .field input:focus, .field select:focus{ border-color:var(--accent); outline:none; }
   .empty-hint{ color:var(--text-muted); font-size:12px; line-height:1.6; }
   .divider{ height:1px; background:var(--border); border:none; margin:8px 0; }
-  .role-dot{ width:11px; height:11px; border-radius:50%; flex:0 0 auto; }
   .toggle-line{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--text); }
   .switch{ position:relative; width:36px; height:20px; flex:0 0 auto; }
   .switch input{ opacity:0; width:0; height:0; }
@@ -266,21 +265,6 @@
   }
 
   /* ---------- stunt drawer ---------- */
-  .drawer-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.28); z-index:80; }
-  .stunt-drawer{
-    position:fixed; top:0; right:0; height:100%; width:320px; max-width:92vw; background:var(--surface);
-    border-left:1px solid var(--border); z-index:90; display:flex; flex-direction:column; box-shadow:var(--shadow);
-  }
-  .drawer-head{ display:flex; align-items:center; gap:8px; padding:14px 16px; border-bottom:1px solid var(--border); }
-  .drawer-head h2{ margin:0; font-size:15px; flex:1; }
-  .drawer-body{ flex:1; overflow:auto; padding:14px 16px; display:flex; flex-direction:column; gap:14px; }
-  .role-block{ display:flex; flex-direction:column; gap:6px; }
-  .role-block .role-title{ display:flex; align-items:center; gap:6px; font-weight:800; font-size:12px; }
-  .member-chip-list{ display:flex; flex-wrap:wrap; gap:6px; }
-  .member-chip{ display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border); border-radius:999px; padding:4px 8px 4px 6px; font-size:12px; background:var(--surface-2); }
-  .member-chip button{ border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-size:12px; padding:0; line-height:1; }
-  .add-member-select{ border:1px solid var(--border); background:var(--surface); padding:6px 8px; border-radius:7px; font-size:12px; }
-  .drawer-foot{ padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; }
 
   /* ---------- present overlay ---------- */
   .present-overlay{
@@ -325,14 +309,13 @@
 
   /* ================= constants ================= */
   var PART_DEFS = {
-    flyer:    { label:'フライヤー',       hue:'--hue-pink' },
-    base:     { label:'ベース',           hue:'--hue-blue' },
-    backspot: { label:'バックスポット',   hue:'--hue-teal' },
-    dancer:   { label:'ダンサー',         hue:'--hue-violet' },
-    tumbler:  { label:'タンブラー',       hue:'--hue-rust' },
-    other:    { label:'その他',           hue:'--hue-grey' }
+    top:          { label:'トップ',         hue:'--hue-pink',   short:'T' },
+    base:         { label:'ベース',         hue:'--hue-blue',   short:'B' },
+    spotter:      { label:'スポッター',     hue:'--hue-teal',   short:'S' },
+    hands:        { label:'ハンズ',         hue:'--hue-amber',  short:'H' },
+    frontsupport: { label:'前サポーター',   hue:'--hue-violet', short:'前' }
   };
-  var PART_ORDER = ['flyer','base','backspot','dancer','tumbler','other'];
+  var PART_ORDER = ['top','base','spotter','hands','frontsupport'];
   var KOMA_COLOR_PALETTE = ['#ff5c86','#5d9cf0','#3fce9f','#eeab52','#a68cf0','#e08a7c','#4fc3d9','#d9c24f','#7d8de0','#e069a6','#6bbf7a','#c08a6b'];
   function nextKomaColor(idx){ return KOMA_COLOR_PALETTE[idx % KOMA_COLOR_PALETTE.length]; }
   function ensureMemberColors(s){
@@ -340,52 +323,23 @@
     s.members.forEach(function(m, i){ if(!m.color) m.color = nextKomaColor(i); });
   }
 
-  var STUNT_ROLES = {
-    top:     { label:'トップ',       short:'T', hue:'--hue-pink' },
-    base:    { label:'ベース',       short:'B', hue:'--hue-blue' },
-    spotter: { label:'スポッター',   short:'S', hue:'--hue-teal' },
-    hands:   { label:'ハンズ',       short:'H', hue:'--hue-amber' }
-  };
-  /* 縦方向の1%はVB_H(700)基準・横方向の1%はVB_W(1000)基準で物理サイズが異なるため、
-     縦方向のoffsetは横方向のspacingと同じ数値でも実際の間隔(VB単位)が7/10倍狭くなる。
-     コマ直径(48 VB単位)を下回らないよう、topOffset/spotterOffsetは13以上を確保している。 */
-  /* 技の種類による見た目のブレを防ぐため、間隔(spacing)は全種類で統一している */
+  /* スタンツ隊列は自動整列を行わず、選択中のコマをそのままグループ化してピクトグラムを表示するだけ（配置は手動） */
   var STUNT_TYPES = {
-    stand:         { label:'スタンド',           spacing:5 },
-    halfup:        { label:'ハーフアップ',       spacing:5 },
-    fullup:        { label:'フルアップ',         spacing:5 },
-    extension:     { label:'エクステンション',   spacing:5 },
-    liberty:       { label:'リバティ',           spacing:5 },
-    arabesque:     { label:'アラベスク',         spacing:5 },
-    heel:          { label:'ヒール',             spacing:5 },
-    scorpion:      { label:'スコーピオン',       spacing:5 },
-    shoulderstand: { label:'ショルダースタンド', spacing:5 },
-    elevator:      { label:'エレベーター',       spacing:5 },
-    pyramid:       { label:'ピラミッド',         spacing:5 },
-    sidebyside:    { label:'サイドサイ',         spacing:5 },
-    stack:         { label:'スタック',           spacing:5 }
+    stand:         { label:'スタンド' },
+    halfup:        { label:'ハーフアップ' },
+    fullup:        { label:'フルアップ' },
+    extension:     { label:'エクステンション' },
+    liberty:       { label:'リバティ' },
+    arabesque:     { label:'アラベスク' },
+    heel:          { label:'ヒール' },
+    scorpion:      { label:'スコーピオン' },
+    shoulderstand: { label:'ショルダースタンド' },
+    elevator:      { label:'エレベーター' },
+    pyramid:       { label:'ピラミッド' },
+    sidebyside:    { label:'サイドサイ' },
+    stack:         { label:'スタック' }
   };
   var STUNT_TYPE_ORDER = ['stand','halfup','fullup','extension','liberty','arabesque','heel','scorpion','shoulderstand','elevator','pyramid','sidebyside','stack'];
-  /* 人数ごとに無駄なスペースが出ないよう幾何学的に配置する（3人=正三角形、4人=ひし形、5人=台形、6人以上=同心円状） */
-  function stuntShapeOffsets(n, unit){
-    var h3 = unit*Math.sqrt(3)/2;
-    if(n<=1) return [[0,0]];
-    if(n===2) return [[0,-unit/2],[0,unit/2]];
-    if(n===3) return [[0,-h3*2/3],[-unit/2,h3/3],[unit/2,h3/3]];
-    if(n===4) return [[0,-unit],[unit,0],[0,unit],[-unit,0]];
-    if(n===5) return [[-unit/2,-unit*0.6],[unit/2,-unit*0.6],[-unit,unit*0.6],[0,unit*0.6],[unit,unit*0.6]];
-    var pts = [[0,0]];
-    var ring = 1;
-    while(pts.length<n){
-      var count = Math.min(n-pts.length, 6*ring);
-      for(var i=0;i<count;i++){
-        var angle = 2*Math.PI*i/count - Math.PI/2;
-        pts.push([Math.cos(angle)*unit*ring, Math.sin(angle)*unit*ring]);
-      }
-      ring++;
-    }
-    return pts.slice(0,n);
-  }
 
   function svgPicto(inner){
     return '<g fill="none" stroke="var(--text)" stroke-width="1.6" stroke-linecap="round">'+inner+'</g>';
@@ -501,7 +455,7 @@
     screen: 'home', sidebarOpen:false, sidebarTab:'placement',
     selectedIds:[], isReadOnly:false, saveStatus:'idle', dirty:false,
     present:false, presentIndex:0, presentPlaying:false, presentTimer:null,
-    stuntDrawerGroupId:null, audioScrubbing:false, exportMenuOpen:false,
+    audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
     undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null
   };
@@ -761,43 +715,10 @@
   function removeFromAllGroups(sc, ids){
     sc.groups = (sc.groups||[]).map(function(g){
       g.memberIds = g.memberIds.filter(function(id){ return ids.indexOf(id)<0; });
-      if(g.composition){
-        if(ids.indexOf(g.composition.top)>=0) g.composition.top=null;
-        if(ids.indexOf(g.composition.spotter)>=0) g.composition.spotter=null;
-        g.composition.base = (g.composition.base||[]).filter(function(id){ return ids.indexOf(id)<0; });
-        g.composition.hands = (g.composition.hands||[]).filter(function(id){ return ids.indexOf(id)<0; });
-      }
       return g;
     }).filter(function(g){ return g.memberIds.length>0; });
   }
   function setPos(sc,id,x,y){ sc.positions[id] = { x:clampPct(x), y:clampPct(y) }; }
-  function autoComposition(ids){
-    var pool = ids.slice();
-    var comp = {top:null, base:[], spotter:null, hands:[]};
-    if(pool.length) comp.top = pool.shift();
-    var baseCount = Math.min(2, pool.length);
-    for(var i=0;i<baseCount;i++) comp.base.push(pool.shift());
-    if(pool.length) comp.spotter = pool.shift();
-    comp.hands = pool;
-    return comp;
-  }
-  function layoutStuntGroup(group, sc){
-    var center = centroidOf(group.memberIds, sc);
-    var comp = group.composition;
-    var t = STUNT_TYPES[group.stuntType] || STUNT_TYPES[STUNT_TYPE_ORDER[0]];
-    var scale = (state.stage.komaScale||100)/100;
-    var unit = (t.spacing||5)*10*scale;
-    var orderedIds = [];
-    if(comp.top) orderedIds.push(comp.top);
-    (comp.hands||[]).forEach(function(id){ orderedIds.push(id); });
-    (comp.base||[]).forEach(function(id){ orderedIds.push(id); });
-    if(comp.spotter) orderedIds.push(comp.spotter);
-    var pts = stuntShapeOffsets(orderedIds.length, unit).slice().sort(function(a,b){ return a[1]-b[1]; });
-    orderedIds.forEach(function(id, i){
-      var off = pts[i];
-      setPos(sc, id, center.x + off[0]/10, center.y + off[1]/7);
-    });
-  }
 
   function arrangeRow(ids, sc){
     if(ids.length<2) return;
@@ -857,10 +778,9 @@
     if(ids.length<2) return;
     pushHistory();
     removeFromAllGroups(sc, ids);
-    var group = { id:uid('grp'), type:'stunt', stuntType: stuntType||STUNT_TYPE_ORDER[0], memberIds:ids.slice(), composition:autoComposition(ids) };
+    var group = { id:uid('grp'), type:'stunt', stuntType: stuntType||STUNT_TYPE_ORDER[0], memberIds:ids.slice() };
     sc.groups = sc.groups||[];
     sc.groups.push(group);
-    layoutStuntGroup(group, sc);
     ui.selectedIds = ids.slice();
     markDirty(); render();
   }
@@ -868,7 +788,6 @@
     if(!g || !newType) return;
     pushHistory();
     g.stuntType = newType;
-    layoutStuntGroup(g, sc);
     markDirty(); render();
   }
   function toggleGroup(ids, sc){
@@ -973,17 +892,10 @@
     var selected = ui.selectedIds.indexOf(id)>=0;
     var g = groupContaining(sc, id);
     var badge = '';
-    if(g && g.type==='stunt' && state.stage.showRoleBadges!==false){
-      var roleKey = null;
-      if(g.composition.top===id) roleKey='top';
-      else if((g.composition.base||[]).indexOf(id)>=0) roleKey='base';
-      else if(g.composition.spotter===id) roleKey='spotter';
-      else if((g.composition.hands||[]).indexOf(id)>=0) roleKey='hands';
-      if(roleKey){
-        var rdef = STUNT_ROLES[roleKey];
-        badge = '<circle cx="17" cy="-17" r="10" style="fill:var('+rdef.hue+');stroke:var(--surface);stroke-width:2;"></circle>' +
-          '<text x="17" y="-13" text-anchor="middle" font-size="10" font-weight="800" style="fill:#fff;font-family:IBM Plex Mono,monospace;pointer-events:none;">'+rdef.short+'</text>';
-      }
+    if(state.stage.showRoleBadges!==false && mForColor && PART_DEFS[mForColor.part]){
+      var pdef = PART_DEFS[mForColor.part];
+      badge = '<circle cx="17" cy="-17" r="10" style="fill:var('+pdef.hue+');stroke:var(--surface);stroke-width:2;"></circle>' +
+        '<text x="17" y="-13" text-anchor="middle" font-size="10" font-weight="800" style="fill:#fff;font-family:IBM Plex Mono,monospace;pointer-events:none;">'+escapeHtml(pdef.short)+'</text>';
     }
     var scale = (state.stage.komaScale||100)/100;
     var r = 24*scale;
@@ -1214,7 +1126,6 @@
         '</div>' +
         renderFooterStrip() +
       '</div>' +
-      (ui.stuntDrawerGroupId ? renderStuntDrawer() : '') +
       (ui.boardPopover ? renderBoardPopover() : '') +
       (ui.present ? renderPresentOverlay() : '');
 
@@ -1703,7 +1614,6 @@
             '<p class="empty-hint" style="margin:0;">'+escapeHtml(groupLabel(g))+'</p>' +
             renderStuntPictoPicker({ currentVal:g.stuntType, act:'stunt-list-pick', extraAttrs:'data-gid="'+g.id+'"' }) +
             '<div style="display:flex;gap:6px;">' +
-              '<button class="btn small ghost" type="button" data-act="open-drawer" data-gid="'+g.id+'" style="flex:1;">構成を編集</button>' +
               '<button class="btn small danger ghost" type="button" data-act="stunt-list-ungroup" data-gid="'+g.id+'" style="flex:1;">解除</button>' +
             '</div>' +
           '</div>';
@@ -1834,46 +1744,6 @@
   }
 
   /* ---------------- Stunt drawer ---------------- */
-  function renderStuntDrawer(){
-    var sc = currentScene();
-    var g = findGroupById(sc, ui.stuntDrawerGroupId);
-    if(!g){ ui.stuntDrawerGroupId=null; return ''; }
-    var comp = g.composition;
-    function chip(id){
-      return '<span class="member-chip">'+escapeHtml(memberName(id))+'<button type="button" data-act="drawer-remove-member" data-id="'+id+'">×</button></span>';
-    }
-    function roleBlock(roleKey, isMulti){
-      var rdef = STUNT_ROLES[roleKey];
-      var current = isMulti ? (comp[roleKey]||[]) : (comp[roleKey]?[comp[roleKey]]:[]);
-      var others = g.memberIds.filter(function(id){ return current.indexOf(id)<0; });
-      var opts = ['<option value="">追加...</option>'].concat(others.map(function(id){ return '<option value="'+id+'">'+escapeHtml(memberName(id))+'</option>'; })).join('');
-      return '<div class="role-block">' +
-        '<div class="role-title"><span class="role-dot" style="background:var('+rdef.hue+');"></span>'+rdef.label+'</div>' +
-        '<div class="member-chip-list">'+(current.length?current.map(chip).join(''):'<span class="empty-hint">未定</span>')+'</div>' +
-        (others.length ? '<select class="add-member-select" data-act="drawer-add-member" data-role="'+roleKey+'">'+opts+'</select>' : '') +
-      '</div>';
-    }
-    var unassigned = g.memberIds.filter(function(id){
-      return comp.top!==id && (comp.base||[]).indexOf(id)<0 && comp.spotter!==id && (comp.hands||[]).indexOf(id)<0;
-    });
-    return '<div class="drawer-backdrop" id="drawerBackdrop"></div>' +
-      '<div class="stunt-drawer" role="dialog" aria-label="スタンツ構成">' +
-        '<div class="drawer-head"><h2>スタンツ構成</h2><button class="btn icon ghost" id="drawerClose">✕</button></div>' +
-        '<div class="drawer-body">' +
-          '<p class="empty-hint">メンバー: '+escapeHtml(groupLabel(g))+'</p>' +
-          roleBlock('top', false) +
-          roleBlock('base', true) +
-          roleBlock('spotter', false) +
-          roleBlock('hands', true) +
-          (unassigned.length ? ('<div class="role-block"><div class="role-title">未割り当て</div><div class="member-chip-list">'+unassigned.map(function(id){ return '<span class="member-chip">'+escapeHtml(memberName(id))+'</span>'; }).join('')+'</div></div>') : '') +
-        '</div>' +
-        '<div class="drawer-foot">' +
-          '<button class="btn small" id="drawerRelayout">位置を再配置</button>' +
-          '<button class="btn small danger" id="drawerUngroup">グループ解除</button>' +
-        '</div>' +
-      '</div>';
-  }
-
   /* ---------------- Present overlay ---------------- */
   function renderPresentOverlay(){
     var sc = state.scenes[ui.presentIndex] || state.scenes[0];
@@ -2313,7 +2183,6 @@
       if(this.disabled) return;
       arrangeStunt(selectedPresentIds(), currentScene(), this.getAttribute('data-stunt-key'));
     });
-    onAll('[data-act="open-drawer"]','click', function(){ ui.stuntDrawerGroupId=this.getAttribute('data-gid'); render(); });
     onAll('[data-act="stunt-list-select"]','click', function(){
       var sc = currentScene();
       var g = findGroupById(sc, this.getAttribute('data-gid'));
@@ -2445,46 +2314,6 @@
       on(key,'change', function(){ pushHistory(); state.stage[key]=this.checked; markDirty(); render(); });
     });
     /* stunt drawer */
-    on('drawerClose','click', function(){ ui.stuntDrawerGroupId=null; render(); });
-    on('drawerBackdrop','click', function(){ ui.stuntDrawerGroupId=null; render(); });
-    on('drawerUngroup','click', function(){
-      pushHistory();
-      var sc=currentScene();
-      sc.groups = (sc.groups||[]).filter(function(g){ return g.id!==ui.stuntDrawerGroupId; });
-      ui.stuntDrawerGroupId=null; markDirty(); render();
-    });
-    on('drawerRelayout','click', function(){
-      pushHistory();
-      var sc=currentScene(); var g=findGroupById(sc, ui.stuntDrawerGroupId);
-      if(g){ layoutStuntGroup(g, sc); markDirty(); render(); }
-    });
-    onAll('[data-act="drawer-remove-member"]','click', function(){
-      pushHistory();
-      var sc=currentScene(); var g=findGroupById(sc, ui.stuntDrawerGroupId);
-      if(!g) return;
-      var id=this.getAttribute('data-id');
-      g.memberIds = g.memberIds.filter(function(x){ return x!==id; });
-      if(g.composition.top===id) g.composition.top=null;
-      if(g.composition.spotter===id) g.composition.spotter=null;
-      g.composition.base=(g.composition.base||[]).filter(function(x){return x!==id;});
-      g.composition.hands=(g.composition.hands||[]).filter(function(x){return x!==id;});
-      if(!g.memberIds.length){ sc.groups=sc.groups.filter(function(x){return x.id!==g.id;}); ui.stuntDrawerGroupId=null; }
-      markDirty(); render();
-    });
-    onAll('[data-act="drawer-add-member"]','change', function(){
-      if(!this.value) return;
-      pushHistory();
-      var sc=currentScene(); var g=findGroupById(sc, ui.stuntDrawerGroupId);
-      if(!g) return;
-      var role=this.getAttribute('data-role'); var id=this.value;
-      if(g.memberIds.indexOf(id)<0) g.memberIds.push(id);
-      if(role==='top') g.composition.top=id;
-      else if(role==='spotter') g.composition.spotter=id;
-      else if(role==='base'){ g.composition.base=g.composition.base||[]; if(g.composition.base.indexOf(id)<0) g.composition.base.push(id); }
-      else if(role==='hands'){ g.composition.hands=g.composition.hands||[]; if(g.composition.hands.indexOf(id)<0) g.composition.hands.push(id); }
-      markDirty(); render();
-    });
-
     wireStageEvents();
   }
 
@@ -2497,10 +2326,7 @@
       positions[id] = { x: flip ? 100-p.x : p.x, y: p.y };
     });
     var groups = (src.groups||[]).map(function(g){
-      return { id:uid('grp'), type:g.type, stuntType:g.stuntType, memberIds:g.memberIds.slice(), composition: g.composition ? {
-        top:g.composition.top, spotter:g.composition.spotter,
-        base:(g.composition.base||[]).slice(), hands:(g.composition.hands||[]).slice()
-      } : undefined };
+      return { id:uid('grp'), type:g.type, stuntType:g.stuntType, memberIds:g.memberIds.slice() };
     });
     var copy = {
       id:uid('sc'), name: src.name + (flip?'（反転）':'のコピー'), section:src.section, color:src.color,
@@ -2705,14 +2531,8 @@
       var id = el.getAttribute('data-member-id');
       var sc = currentScene();
       var g = groupContaining(sc, id);
-      if(g && g.type==='stunt'){
-        ui.selectedIds = g.memberIds.slice();
-        ui.stuntDrawerGroupId = g.id;
-        render();
-      } else {
-        ui.selectedIds = [id];
-        render();
-      }
+      ui.selectedIds = g ? g.memberIds.slice() : [id];
+      render();
     });
   }
 
