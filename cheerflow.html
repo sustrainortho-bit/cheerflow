@@ -92,6 +92,15 @@
   .home-card h2{ margin:0; font-size:18px; }
   .home-card p{ margin:0; font-size:12px; color:var(--text-muted); font-family:'Manrope'; text-transform:none; letter-spacing:0; }
   .home-card.primary{ background:var(--accent-soft); border-color:var(--accent); }
+  .project-list{ display:flex; flex-direction:column; gap:8px; width:100%; margin-top:12px; }
+  .project-list-row{ display:flex; align-items:stretch; gap:6px; }
+  .project-list-open{
+    flex:1; min-width:0; text-align:left; border:1px solid var(--border); background:var(--surface); border-radius:var(--radius);
+    padding:12px 16px; cursor:pointer; display:flex; flex-direction:column; gap:3px;
+  }
+  .project-list-open:hover{ border-color:var(--accent); }
+  .project-list-title{ font-size:14px; font-family:'Manrope'; font-weight:700; }
+  .project-list-date{ font-size:11px; color:var(--text-muted); }
 
   /* ---------- modal ---------- */
   .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:120; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -328,7 +337,10 @@
   function nextKomaColor(idx){ return KOMA_COLOR_PALETTE[idx % KOMA_COLOR_PALETTE.length]; }
   function ensureMemberColors(s){
     if(!s || !s.members) return;
-    s.members.forEach(function(m, i){ if(!m.color) m.color = nextKomaColor(i); });
+    s.members.forEach(function(m, i){
+      if(!m.color) m.color = nextKomaColor(i);
+      if(!m.part || !PART_DEFS[m.part]) m.part = PART_ORDER[0];
+    });
   }
 
   /* スタンツ隊列は自動整列を行わず、選択中のコマをそのままグループ化してピクトグラムを表示するだけ（配置は手動） */
@@ -449,6 +461,31 @@
     var m = window.location.search.match(/[?&]p=([a-zA-Z0-9_-]+)/);
     return m ? m[1] : null;
   })();
+
+  /* この端末で開いたことのあるクラウド保存プロジェクトの一覧（ホーム画面「プロジェクトを開く」用）。
+     実データはFirestoreの?p=<id>で共有されるため、この一覧は端末ごとの「最近開いた/保存した」インデックスに過ぎない。 */
+  var PROJECT_LIST_KEY = 'cheerflow_project_list_v1';
+  function loadProjectList(){
+    try{
+      var arr = JSON.parse(localStorage.getItem(PROJECT_LIST_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+  }
+  function saveProjectList(list){
+    try{ localStorage.setItem(PROJECT_LIST_KEY, JSON.stringify(list)); }catch(e){}
+  }
+  function upsertProjectListEntry(id, title){
+    if(!id) return;
+    var list = loadProjectList();
+    var entry = null;
+    for(var i=0;i<list.length;i++){ if(list[i].id===id){ entry = list[i]; break; } }
+    if(entry){ entry.title = title || entry.title; entry.updatedAt = Date.now(); }
+    else { list.push({ id:id, title: title || '無題のプロジェクト', updatedAt: Date.now() }); }
+    saveProjectList(list);
+  }
+  function removeProjectListEntry(id){
+    saveProjectList(loadProjectList().filter(function(p){ return p.id!==id; }));
+  }
 
   function scheduleLocalSave(){
     if(!state.hasProject) return;
@@ -1129,6 +1166,11 @@
 
   function render(){
     scheduleLocalSave();
+    if(ui.screen==='projectList'){
+      root.innerHTML = renderProjectListScreen();
+      wireProjectListEvents();
+      return;
+    }
     if(ui.screen==='home' || !state.hasProject){
       root.innerHTML = renderHomeScreen() + (ui.wizardOpen ? renderWizard() : '');
       wireHomeEvents();
@@ -1237,17 +1279,52 @@
   /* ---------------- Home screen ---------------- */
   function renderHomeScreen(){
     var hasProject = state.hasProject;
+    var listCount = loadProjectList().length;
+    var subtitle = hasProject ? escapeHtml(state.title||'無題のプロジェクト')+' ・ 全'+state.scenes.length+'シーン'
+      : (listCount ? '保存済みのプロジェクトが'+listCount+'件あります' : 'まだプロジェクトがありません');
     return '<div class="home-screen">' +
       '<div><div class="home-brand">Cheer<em>Flow</em></div></div>' +
       '<div class="home-actions">' +
-        '<button class="home-card" id="homeEditBtn" '+(hasProject?'':'disabled')+'>' +
+        '<button class="home-card" id="homeEditBtn" '+(hasProject||listCount?'':'disabled')+'>' +
           '<h2>プロジェクトを開く</h2>' +
-          '<p>'+(hasProject ? escapeHtml(state.title||'無題のプロジェクト')+' ・ 全'+state.scenes.length+'シーン' : 'まだプロジェクトがありません')+'</p>' +
+          '<p>'+subtitle+'</p>' +
         '</button>' +
         '<button class="home-card primary" id="homeNewBtn">' +
           '<h2>新規プロジェクトを作成</h2>' +
           '<p>音源と構成人数を入力して開始します</p>' +
         '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderProjectListScreen(){
+    var list = loadProjectList().slice().sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+    var currentInList = !!(cloudProjectId && list.some(function(p){ return p.id===cloudProjectId; }));
+    var currentRow = (state.hasProject && !currentInList) ?
+      '<div class="project-list-row">' +
+        '<button class="project-list-open" id="openCurrentProjectBtn">' +
+          '<span class="project-list-title">'+escapeHtml(state.title||'無題のプロジェクト')+'</span>' +
+          '<span class="project-list-date">この端末で編集中（未共有）</span>' +
+        '</button>' +
+      '</div>' : '';
+    var rows = list.map(function(p){
+      var d = p.updatedAt ? new Date(p.updatedAt) : null;
+      var dateLabel = d ? (d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()) : '';
+      var isCurrent = p.id===cloudProjectId;
+      return '<div class="project-list-row">' +
+        '<button class="project-list-open" data-act="open-project" data-id="'+p.id+'">' +
+          '<span class="project-list-title">'+escapeHtml(p.title||'無題のプロジェクト')+'</span>' +
+          '<span class="project-list-date">'+(isCurrent?'編集中・':'')+dateLabel+'</span>' +
+        '</button>' +
+        '<button class="btn small ghost icon" data-act="remove-project-entry" data-id="'+p.id+'" title="一覧から削除（データ自体は消えません）">×</button>' +
+      '</div>';
+    }).join('');
+    var body = (currentRow || rows) ? '<div class="project-list">'+currentRow+rows+'</div>' : '<p class="empty-hint">まだ保存されたプロジェクトがありません。</p>';
+    return '<div class="home-screen">' +
+      '<div class="home-actions" style="max-width:520px;">' +
+        '<button class="btn small ghost" id="projectListBack">◀ ホームに戻る</button>' +
+        '<h2 style="font-size:14px;margin:14px 0 0;">プロジェクトを開く</h2>' +
+        body +
       '</div>' +
     '</div>';
   }
@@ -1283,7 +1360,7 @@
   function createProject(opts){
     var n = Math.max(1, Math.min(60, opts.memberCount||8));
     var members = [];
-    for(var i=1;i<=n;i++){ members.push({ id:uid('m'), name:'メンバー'+i, part:'other', color:nextKomaColor(i-1) }); }
+    for(var i=1;i<=n;i++){ members.push({ id:uid('m'), name:'メンバー'+i, part:PART_ORDER[0], color:nextKomaColor(i-1) }); }
     var presence = {}; members.forEach(function(m){ presence[m.id]=true; });
     var scene1 = {
       id:uid('sc'), name:'シーン1', section:'opening', color:SECTION_DEFS.opening.color, timeLabel:'', startSec:null,
@@ -1306,7 +1383,10 @@
 
   function wireHomeEvents(){
     var editBtn = document.getElementById('homeEditBtn');
-    if(editBtn) editBtn.addEventListener('click', function(){ if(state.hasProject){ ui.screen='editor'; render(); } });
+    if(editBtn) editBtn.addEventListener('click', function(){
+      if(state.hasProject && !loadProjectList().length){ ui.screen='editor'; render(); return; }
+      if(state.hasProject || loadProjectList().length){ ui.screen='projectList'; render(); }
+    });
     var newBtn = document.getElementById('homeNewBtn');
     if(newBtn) newBtn.addEventListener('click', function(){
       if(state.hasProject && !confirm('既存のプロジェクトを新しいプロジェクトで置き換えます。よろしいですか？')) return;
@@ -1350,6 +1430,25 @@
       }
       ui.wizardOpen=false;
       createProject({ title: title, memberCount: count, audio: audio });
+    });
+  }
+
+  function wireProjectListEvents(){
+    var back = document.getElementById('projectListBack');
+    if(back) back.addEventListener('click', function(){ ui.screen='home'; render(); });
+    var openCurrent = document.getElementById('openCurrentProjectBtn');
+    if(openCurrent) openCurrent.addEventListener('click', function(){ ui.screen='editor'; render(); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-act="open-project"]'), function(b){
+      b.addEventListener('click', function(){
+        window.location.href = window.location.pathname + '?p=' + encodeURIComponent(this.getAttribute('data-id'));
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-act="remove-project-entry"]'), function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        removeProjectListEntry(this.getAttribute('data-id'));
+        render();
+      });
     });
   }
 
@@ -2203,7 +2302,7 @@
       pushHistory();
       var n = state.members.length+1;
       var id = uid('m');
-      state.members.push({ id:id, name:'新規'+n, part:'other', color:nextKomaColor(state.members.length) });
+      state.members.push({ id:id, name:'新規'+n, part:PART_ORDER[0], color:nextKomaColor(state.members.length) });
       currentScene().presence[id] = true;
       currentScene().positions[id] = { x:50, y:50 };
       markDirty(); render();
@@ -2318,7 +2417,7 @@
     });
 
     /* roster tab */
-    on('memberAddBtn','click', function(){ pushHistory(); state.members.push({ id:uid('m'), name:'新しいメンバー', part:'other', color:nextKomaColor(state.members.length) }); markDirty(); render(); });
+    on('memberAddBtn','click', function(){ pushHistory(); state.members.push({ id:uid('m'), name:'新しいメンバー', part:PART_ORDER[0], color:nextKomaColor(state.members.length) }); markDirty(); render(); });
     onAll('[data-act="member-name"]','change', function(){
       pushHistory();
       var id=this.closest('.roster-row').getAttribute('data-id');
@@ -2345,7 +2444,7 @@
       pushHistory();
       var ta=document.getElementById('bulkNames');
       var lines=ta.value.split('\n').map(function(s){return s.trim();}).filter(Boolean);
-      lines.forEach(function(n){ state.members.push({ id:uid('m'), name:n, part:'other', color:nextKomaColor(state.members.length) }); });
+      lines.forEach(function(n){ state.members.push({ id:uid('m'), name:n, part:PART_ORDER[0], color:nextKomaColor(state.members.length) }); });
       ta.value=''; markDirty(); render();
     });
 
@@ -2731,6 +2830,7 @@
           history.replaceState(null, '', url.toString());
         }catch(e){}
       }
+      upsertProjectListEntry(docId, state.title);
       ui.dirty=false; ui.saveStatus='saved'; render();
     }).catch(function(){
       ui.dirty=false; ui.saveStatus='error'; render();
@@ -2752,6 +2852,7 @@
     cfDb.collection('projects').doc(cloudProjectId).get().then(function(doc){
       if(doc.exists && doc.data() && doc.data().state){
         applyLoadedState(doc.data().state);
+        upsertProjectListEntry(cloudProjectId, state.title);
       } else {
         cloudProjectId = null;
         try{ history.replaceState(null, '', window.location.pathname); }catch(e){}
