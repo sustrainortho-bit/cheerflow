@@ -107,6 +107,9 @@
   .modal-box{ width:420px; max-width:100%; max-height:90vh; overflow:auto; background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px; display:flex; flex-direction:column; gap:14px; }
   .modal-box h2{ margin:0; font-size:18px; }
   .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+  .contact-pick-list{ display:flex; flex-direction:column; gap:2px; max-height:50vh; overflow:auto; border:1px solid var(--border); border-radius:9px; padding:6px; }
+  .contact-pick-row{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; font-size:13px; cursor:pointer; }
+  .contact-pick-row:hover{ background:var(--floor-line); }
   .toggle-btns{ display:flex; gap:6px; }
   .toggle-btns .btn{ flex:1; justify-content:center; }
 
@@ -195,6 +198,12 @@
   }
   .sel-toolbar .count{ font-size:12px; color:var(--text-muted); font-weight:700; margin-right:4px; }
   .stage-frame{ position:relative; flex:0 0 auto; }
+  .viewpoint-toggle{
+    position:absolute; top:8px; right:8px; z-index:5; font-size:11px; font-weight:700; letter-spacing:.02em;
+    padding:5px 10px; border-radius:99px; border:1px solid var(--border); background:var(--surface); color:var(--text);
+    cursor:pointer; box-shadow:var(--shadow); opacity:.9;
+  }
+  .viewpoint-toggle:hover{ opacity:1; border-color:var(--accent); }
   .stage-row{ display:flex; flex:1 1 auto; flex-direction:row; gap:12px; align-items:flex-start; justify-content:center; width:100%; min-height:0; }
   .count-notes-side{ display:flex; flex-direction:column; gap:6px; width:150px; flex:0 0 150px; max-height:100%; overflow:auto; }
   .count-notes-side h3{ font-size:11px; margin:0; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; font-family:'Oswald',system-ui,sans-serif; }
@@ -281,8 +290,21 @@
     position:fixed; inset:0; background:var(--bg); z-index:100; display:flex; flex-direction:column; padding:20px 26px 26px;
   }
   .present-top{ display:flex; align-items:center; gap:12px; }
+  .present-body{ flex:1; display:flex; gap:16px; min-height:0; }
   .present-stage-wrap{ flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:10px 0; }
-  .present-stage-wrap .stage-svg{ max-width:min(94vw,980px); max-height:52vh; }
+  .present-stage-wrap .stage-svg{ max-width:100%; max-height:100%; }
+  .present-countnotes-side{
+    flex:0 0 200px; width:200px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;
+    padding:14px; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);
+  }
+  .present-countnotes-side h3{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); }
+  .present-cn-row{ display:flex; gap:8px; font-size:13px; align-items:baseline; }
+  .present-cn-row b{ color:var(--accent); font-family:'IBM Plex Mono'; min-width:16px; flex:0 0 auto; }
+  .present-cn-row span{ color:var(--text); word-break:break-word; }
+  @media (max-width:680px){
+    .present-body{ flex-direction:column; }
+    .present-countnotes-side{ flex:0 0 auto; width:auto; max-height:22vh; }
+  }
   .present-info{ text-align:center; display:flex; flex-direction:column; gap:4px; }
   .present-info h2{ font-size:24px; margin:0; }
   .present-controls{ display:flex; align-items:center; justify-content:center; gap:14px; padding-top:6px; }
@@ -290,8 +312,6 @@
   .present-dots button{ width:9px; height:9px; padding:0; border-radius:50%; border:none; background:var(--border); cursor:pointer; }
   .present-dots button.on{ background:var(--accent); }
   .present-note{ color:var(--text-muted); font-size:13px; max-width:560px; margin:0 auto; }
-  .present-countnotes{ display:flex; flex-wrap:wrap; gap:6px 14px; justify-content:center; max-width:560px; margin:6px auto 0; font-size:12px; color:var(--text-muted); }
-  .present-countnotes b{ color:var(--text); font-family:'IBM Plex Mono'; margin-right:4px; }
 
   /* ---------- print ---------- */
   #printArea{ display:none; }
@@ -408,7 +428,7 @@
   function defaultStage(){
     return { widthM:8, depthM:6, frontCount:9, frontLabels:'', depthCount:6, depthLabels:'',
       showGrid:true, showFrontNumbers:true, showDepthNumbers:false, showCenter:true, showDiagonal:false, showThirds:false,
-      komaScale:100, snapGrid:false, showRoleBadges:true };
+      komaScale:100, snapGrid:false, showRoleBadges:true, audienceAtTop:false };
   }
   function emptyState(){
     return {
@@ -502,7 +522,9 @@
     present:false, presentIndex:0, presentPlaying:false, presentTimer:null,
     audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
-    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null
+    wizardTitle:'', wizardCount:8, wizardYtUrl:'',
+    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null,
+    contactPickOpen:false, contactPickIds:[]
   };
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
@@ -1028,7 +1050,7 @@
     }
     g.push('<text x="18" y="30" font-size="15" font-weight="700" style="fill:var(--text-muted);font-family:Oswald,sans-serif;">下手</text>');
     g.push('<text x="'+(VB_W-18)+'" y="30" text-anchor="end" font-size="15" font-weight="700" style="fill:var(--text-muted);font-family:Oswald,sans-serif;">上手</text>');
-    g.push('<text x="'+(VB_W/2)+'" y="'+(VB_H-34)+'" text-anchor="middle" font-size="13" style="fill:var(--text-muted);font-family:Manrope,sans-serif;letter-spacing:.1em;">客席</text>');
+    g.push('<text x="'+(VB_W/2)+'" y="'+(st.audienceAtTop?28:(VB_H-34))+'" text-anchor="middle" font-size="13" style="fill:var(--text-muted);font-family:Manrope,sans-serif;letter-spacing:.1em;">客席</text>');
     return g.join('');
   }
   function renderPaths(scene){
@@ -1196,6 +1218,7 @@
         renderFooterStrip() +
       '</div>' +
       (ui.boardPopover ? renderBoardPopover() : '') +
+      (ui.contactPickOpen ? renderContactSheetPicker() : '') +
       (ui.present ? renderPresentOverlay() : '');
 
     wireEvents();
@@ -1334,8 +1357,8 @@
     return '<div class="modal-backdrop" id="wizardBackdrop">' +
       '<div class="modal-box" role="dialog" aria-label="新規プロジェクト作成">' +
         '<h2>新規プロジェクト作成</h2>' +
-        '<div class="field"><label for="wizardTitle">構成名<span style="color:var(--danger);">*</span></label><input type="text" id="wizardTitle" placeholder="例: 2026年春 大会構成" required></div>' +
-        '<div class="field"><label for="wizardCount">構成人数</label><input type="number" id="wizardCount" min="1" max="60" value="8"></div>' +
+        '<div class="field"><label for="wizardTitle">構成名<span style="color:var(--danger);">*</span></label><input type="text" id="wizardTitle" placeholder="例: 2026年春 大会構成" value="'+escapeHtml(ui.wizardTitle||'')+'" required></div>' +
+        '<div class="field"><label for="wizardCount">構成人数</label><input type="number" id="wizardCount" min="1" max="60" value="'+(ui.wizardCount||8)+'"></div>' +
         '<div class="field"><label>音源</label>' +
           '<div class="toggle-btns">' +
             '<button type="button" class="btn small'+(srcFile?' on':'')+'" data-wsrc="file">ファイル</button>' +
@@ -1346,7 +1369,7 @@
           '<div class="field"><label for="wizardFile">音源ファイル</label><input type="file" id="wizardFile" accept="audio/*"></div>' +
           '<p class="empty-hint">'+(ui.wizardFileStaged ? '選択中：'+escapeHtml(ui.wizardFileStaged.name) : '8MB程度までのファイルを選べます。')+'</p>'
           :
-          '<div class="field"><label for="wizardYtUrl">YouTubeのURL</label><input type="url" id="wizardYtUrl" placeholder="https://www.youtube.com/watch?v=..."></div>' +
+          '<div class="field"><label for="wizardYtUrl">YouTubeのURL</label><input type="url" id="wizardYtUrl" placeholder="https://www.youtube.com/watch?v=..." value="'+escapeHtml(ui.wizardYtUrl||'')+'"></div>' +
           '<p class="empty-hint">YouTubeの動画を埋め込み、再生位置に合わせて正確にシーンを追加できます。Claude Artifact内など埋め込みがブロックされる環境では、自動的に参考リンク（別タブで開く）として扱われます。後からファイル音源に切り替えることもできます。</p>'
         ) +
         '<div class="modal-actions">' +
@@ -1384,13 +1407,19 @@
   function wireHomeEvents(){
     var editBtn = document.getElementById('homeEditBtn');
     if(editBtn) editBtn.addEventListener('click', function(){
-      if(state.hasProject && !loadProjectList().length){ ui.screen='editor'; render(); return; }
-      if(state.hasProject || loadProjectList().length){ ui.screen='projectList'; render(); }
+      if(state.hasProject){
+        if(confirm('作業中のプロジェクトがあります。続きから開始しますか？')){
+          ui.screen='editor'; render(); return;
+        }
+      }
+      if(loadProjectList().length){ ui.screen='projectList'; render(); }
     });
     var newBtn = document.getElementById('homeNewBtn');
     if(newBtn) newBtn.addEventListener('click', function(){
       if(state.hasProject && !confirm('既存のプロジェクトを新しいプロジェクトで置き換えます。よろしいですか？')) return;
-      ui.wizardOpen=true; ui.wizardAudioSrc='file'; ui.wizardFileStaged=null; render();
+      ui.wizardOpen=true; ui.wizardAudioSrc='file'; ui.wizardFileStaged=null;
+      ui.wizardTitle=''; ui.wizardCount=8; ui.wizardYtUrl='';
+      render();
     });
     var cancel = document.getElementById('wizardCancel');
     if(cancel) cancel.addEventListener('click', function(){ ui.wizardOpen=false; render(); });
@@ -1399,6 +1428,12 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-wsrc]'), function(b){
       b.addEventListener('click', function(){ ui.wizardAudioSrc=this.getAttribute('data-wsrc'); render(); });
     });
+    var wTitle = document.getElementById('wizardTitle');
+    if(wTitle) wTitle.addEventListener('input', function(){ ui.wizardTitle = this.value; });
+    var wCount = document.getElementById('wizardCount');
+    if(wCount) wCount.addEventListener('input', function(){ ui.wizardCount = this.value; });
+    var wYt = document.getElementById('wizardYtUrl');
+    if(wYt) wYt.addEventListener('input', function(){ ui.wizardYtUrl = this.value; });
     var wFile = document.getElementById('wizardFile');
     if(wFile) wFile.addEventListener('change', function(){
       var f = this.files && this.files[0];
@@ -1410,22 +1445,20 @@
     });
     var create = document.getElementById('wizardCreate');
     if(create) create.addEventListener('click', function(){
-      var titleEl = document.getElementById('wizardTitle');
-      var title = titleEl ? titleEl.value.trim() : '';
+      var title = (ui.wizardTitle||'').trim();
       if(!title){
         alert('構成名を入力してください。');
+        var titleEl = document.getElementById('wizardTitle');
         if(titleEl) titleEl.focus();
         return;
       }
-      var countEl = document.getElementById('wizardCount');
-      var count = countEl ? parseInt(countEl.value,10) : 8;
+      var count = parseInt(ui.wizardCount,10) || 8;
       var audio;
       if(ui.wizardAudioSrc==='file'){
         audio = ui.wizardFileStaged ? { dataUrl:ui.wizardFileStaged.dataUrl, name:ui.wizardFileStaged.name, sourceType:'file', youtubeUrl:'' }
                                      : { dataUrl:'', name:'', sourceType:'file', youtubeUrl:'' };
       } else {
-        var ytEl = document.getElementById('wizardYtUrl');
-        var yt = ytEl ? ytEl.value.trim() : '';
+        var yt = (ui.wizardYtUrl||'').trim();
         audio = { dataUrl:'', name:'', sourceType:'youtube', youtubeUrl:yt };
       }
       ui.wizardOpen=false;
@@ -1460,7 +1493,7 @@
         '<button data-act="exp-pdf">全シーン一覧をPDF（印刷）</button>' +
         '<button data-act="exp-png-current">現在のシーンをPNG</button>' +
         '<button data-act="exp-png-contact">コンタクトシート（全シーン1枚）</button>' +
-        '<button data-act="exp-png-contact-current">コンタクトシート（選択中の1シーン）</button>' +
+        '<button data-act="exp-png-contact-pick">コンタクトシート（選択したシーン）</button>' +
         '<div class="grp-label">データ</div>' +
         '<button data-act="exp-json-export">プロジェクトをJSONで書き出す</button>' +
         '<input type="file" id="jsonImportInput" accept="application/json" class="visually-hidden">' +
@@ -1539,6 +1572,7 @@
   }
   function renderTransportRow(){
     return '<div class="transport-row">' +
+      '<button class="btn small ghost icon" id="restartBtn" type="button" title="始めから">⏮ 始めから</button>' +
       '<button class="btn small ghost icon" id="skipBackBtn" type="button" title="10秒戻る">⏪10</button>' +
       '<button class="btn small" id="audioPlayBtn">'+(playbackIsPaused()?'▶ 再生':'❚❚ 一時停止')+'</button>' +
       '<button class="btn small ghost icon" id="skipFwdBtn" type="button" title="10秒進む">10⏩</button>' +
@@ -1647,9 +1681,14 @@
       '</div>';
     }
     var countPanel = !ui.sidebarOpen ? renderCountNotesPanel(sc) : '';
+    var audienceAtTop = !!state.stage.audienceAtTop;
     return '<div class="stage-panel">' +
       '<div class="stage-row">' +
-        '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+'</div>' +
+        '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+
+          '<button type="button" class="viewpoint-toggle" id="audienceToggleBtn" title="客席の向きを切り替え">'+
+            '⇅ '+(audienceAtTop?'演者視点':'観客視点')+
+          '</button>'+
+        '</div>' +
         countPanel +
       '</div>' +
       '<textarea class="scene-memo-inline" id="sceneMemoInline" placeholder="このシーンのメモ（動きの説明やキュー、注意点など）">'+escapeHtml(sc.note||'')+'</textarea>' +
@@ -1880,21 +1919,23 @@
       return '<button class="'+(i===ui.presentIndex?'on':'')+'" data-idx="'+i+'" aria-label="シーン'+(i+1)+'"></button>';
     }).join('');
     var cn = sc.countNotes || {};
-    var cnItems = [];
-    for(var c=1;c<=8;c++){ if(cn[c]) cnItems.push('<span><b>'+c+'</b>'+escapeHtml(cn[c])+'</span>'); }
+    var cnRows = [];
+    for(var c=1;c<=8;c++){ cnRows.push('<div class="present-cn-row"><b>'+c+'</b><span>'+escapeHtml(cn[c]||'')+'</span></div>'); }
     return '<div class="present-overlay" role="dialog" aria-modal="true">' +
       '<div class="present-top">' +
         '<button class="btn ghost icon" id="presentClose">✕ 終了</button>' +
         '<div class="header-spacer"></div>' +
         '<span class="mono" style="color:var(--text-muted);">'+(ui.presentIndex+1)+' / '+state.scenes.length+'</span>' +
       '</div>' +
-      '<div class="present-stage-wrap">'+renderStageSvg(sc,{mini:false}).replace(' stage-main','')+'</div>' +
+      '<div class="present-body">' +
+        '<div class="present-stage-wrap">'+renderStageSvg(sc,{mini:false}).replace(' stage-main','')+'</div>' +
+        '<div class="present-countnotes-side"><h3>カウント別メモ</h3>'+cnRows.join('')+'</div>' +
+      '</div>' +
       '<div class="present-info">' +
         '<span class="sect" style="color:'+sect.color+';font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:12px;">'+sect.label+'</span>' +
         '<h2>'+escapeHtml(sc.name||'無題のシーン')+'</h2>' +
         '<span class="mono" style="color:var(--text-muted);">'+escapeHtml(sceneTimeDisplay(sc))+'</span>' +
         '<p class="present-note">'+escapeHtml(sc.note||'')+'</p>' +
-        (cnItems.length ? '<div class="present-countnotes">'+cnItems.join('')+'</div>' : '') +
       '</div>' +
       '<div class="present-controls">' +
         '<button class="btn" id="presentPrev">◀ 前へ</button>' +
@@ -1992,7 +2033,38 @@
     }).catch(function(){ alert('コンタクトシートの生成に失敗しました。'); });
   }
   function exportContactSheetPng(){ exportContactSheet(state.scenes, 'contact-sheet.png'); }
-  function exportContactSheetCurrentPng(){ exportContactSheet([currentScene()], 'contact-sheet-'+(currentScene().name||'scene')+'.png'); }
+  function openContactSheetPicker(){
+    ui.contactPickIds = [state.currentSceneId];
+    ui.contactPickOpen = true;
+  }
+  function renderContactSheetPicker(){
+    var rows = state.scenes.map(function(sc, i){
+      var checked = ui.contactPickIds.indexOf(sc.id)>=0;
+      return '<label class="contact-pick-row">' +
+        '<input type="checkbox" data-act="contact-pick-toggle" data-id="'+sc.id+'" '+(checked?'checked':'')+'>' +
+        '<span>'+(i+1)+'. '+escapeHtml(sc.name||'無題')+'</span>' +
+      '</label>';
+    }).join('');
+    return '<div class="modal-backdrop" id="contactPickBackdrop">' +
+      '<div class="modal-box" role="dialog" aria-label="コンタクトシート（選択したシーン）">' +
+        '<h2>コンタクトシート（選択したシーン）</h2>' +
+        '<p class="empty-hint">画像に含めるシーンを選んでください。'+ui.contactPickIds.length+'件選択中。</p>' +
+        '<div class="contact-pick-list">'+rows+'</div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn" id="contactPickCancel">キャンセル</button>' +
+          '<button class="btn primary" id="contactPickCreate" '+(ui.contactPickIds.length?'':'disabled')+'>作成</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  function exportContactSheetPicked(){
+    var ids = ui.contactPickIds;
+    var scenes = state.scenes.filter(function(sc){ return ids.indexOf(sc.id)>=0; });
+    if(!scenes.length) return;
+    exportContactSheet(scenes, 'contact-sheet-selected.png');
+    ui.contactPickOpen = false;
+    render();
+  }
   function exportPdfAllScenes(){
     var PER_PAGE = 8;
     var pages = [];
@@ -2075,7 +2147,7 @@
         if(act==='exp-pdf') exportPdfAllScenes();
         else if(act==='exp-png-current') exportCurrentPng();
         else if(act==='exp-png-contact') exportContactSheetPng();
-        else if(act==='exp-png-contact-current') exportContactSheetCurrentPng();
+        else if(act==='exp-png-contact-pick') openContactSheetPicker();
         else if(act==='exp-json-export') exportJson();
         else if(act==='exp-share-link') copyShareLink();
         else if(act==='exp-collab-link') alert('共同編集させたい相手には、このページ右上（アーティファクトの共有メニュー）から「編集者として共有」を選んでリンクを送ってください。同じURLでも、共有時の権限設定によって閲覧のみか編集可能かが決まります。');
@@ -2170,6 +2242,8 @@
         px = Math.max(220, Math.min(window.innerWidth-320, px));
         document.documentElement.style.setProperty('--audio-panel-w', px+'px');
         try{ localStorage.setItem(AUDIO_PANEL_W_KEY, String(px)); }catch(e){}
+        positionYtPortal();
+        fitStageFrame();
       }
       resizer.addEventListener('pointerdown', function(e){
         dragging = true; resizer.classList.add('active');
@@ -2185,6 +2259,14 @@
       resizer.addEventListener('pointercancel', function(){ dragging=false; resizer.classList.remove('active'); });
     })();
     on('audioPlayBtn','click', function(){ playbackTogglePlay(); });
+    on('audienceToggleBtn','click', function(){
+      pushHistory();
+      state.stage.audienceAtTop = !state.stage.audienceAtTop;
+      markDirty(); render();
+    });
+    on('restartBtn','click', function(){
+      playbackSeek(0); updateTimelineUI(0, playbackDuration());
+    });
     on('skipBackBtn','click', function(){
       var t = Math.max(0, playbackTime()-10);
       playbackSeek(t); updateTimelineUI(t, playbackDuration());
@@ -2347,6 +2429,17 @@
       markDirty(); render();
     });
     onAll('[data-act="board-popover-close"]','click', function(){ ui.boardPopover=null; render(); });
+    on('contactPickCancel','click', function(){ ui.contactPickOpen=false; render(); });
+    on('contactPickCreate','click', exportContactSheetPicked);
+    var contactBackdrop = document.getElementById('contactPickBackdrop');
+    if(contactBackdrop) contactBackdrop.addEventListener('click', function(e){ if(e.target===contactBackdrop){ ui.contactPickOpen=false; render(); } });
+    onAll('[data-act="contact-pick-toggle"]','click', function(){
+      var id = this.getAttribute('data-id');
+      var i = ui.contactPickIds.indexOf(id);
+      if(this.checked){ if(i<0) ui.contactPickIds.push(id); }
+      else { if(i>=0) ui.contactPickIds.splice(i,1); }
+      render();
+    });
     onAll('[data-act="board-stunt-pick"]','click', function(){
       var sc = currentScene();
       var g = findGroupById(sc, this.getAttribute('data-gid'));
@@ -2853,6 +2946,7 @@
       if(doc.exists && doc.data() && doc.data().state){
         applyLoadedState(doc.data().state);
         upsertProjectListEntry(cloudProjectId, state.title);
+        ui.screen = 'editor';
       } else {
         cloudProjectId = null;
         try{ history.replaceState(null, '', window.location.pathname); }catch(e){}
