@@ -204,6 +204,11 @@
     cursor:pointer; box-shadow:var(--shadow); opacity:.9;
   }
   .viewpoint-toggle:hover{ opacity:1; border-color:var(--accent); }
+  .stage-scene-title{
+    position:absolute; top:8px; left:8px; z-index:5; max-width:60%; font-size:12px; font-weight:700;
+    padding:5px 10px; border-radius:99px; border:1px solid var(--border); background:var(--surface); color:var(--text);
+    box-shadow:var(--shadow); opacity:.92; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
   .stage-row{ display:flex; flex:1 1 auto; flex-direction:row; gap:12px; align-items:flex-start; justify-content:center; width:100%; min-height:0; }
   .count-notes-side{ display:flex; flex-direction:column; gap:6px; width:150px; flex:0 0 150px; max-height:100%; overflow:auto; }
   .count-notes-side h3{ font-size:11px; margin:0; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; font-family:'Oswald',system-ui,sans-serif; }
@@ -420,6 +425,7 @@
   };
   var SECTION_ORDER = ['opening','cheer','jump','stunt','pyramid','basket','tumbling','dance','transition','ending'];
   var VB_W = 1000, VB_H = 700;
+  var EXPORT_SCALE = 3; /* PNG/コンタクトシートの書き出し解像度倍率。VB_W/VB_Hはビューポート座標系なので画質には直結しない */
   var MAX_HISTORY = 40;
 
   /* ================= state ================= */
@@ -523,7 +529,7 @@
     audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
     wizardTitle:'', wizardCount:8, wizardYtUrl:'',
-    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null,
+    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null, markEnd:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null,
     contactPickOpen:false, contactPickIds:[]
   };
 
@@ -1542,12 +1548,12 @@
     var cs = ui.countSplit;
     var overlayGrid = '';
     var csInterval = (cs && cs.bpm>0) ? (60/cs.bpm*8) : null;
-    if(cs && cs.markA!=null && csInterval){
-      overlayGrid = '<div style="position:absolute;top:0;bottom:0;left:'+(cs.markA*zoom)+'px;right:0;opacity:.55;'+
+    if(cs && cs.markA!=null && cs.markEnd!=null && csInterval && cs.markEnd>cs.markA){
+      overlayGrid = '<div style="position:absolute;top:0;bottom:0;left:'+(cs.markA*zoom)+'px;width:'+((cs.markEnd-cs.markA)*zoom)+'px;opacity:.55;'+
         'background-image:repeating-linear-gradient(to right, var(--hue-rust) 0, var(--hue-rust) 2px, transparent 2px, transparent '+(csInterval*zoom)+'px);"></div>';
     }
     var markA = (cs && cs.markA!=null) ? '<div class="tl-mark a" style="left:'+(cs.markA*zoom)+'px"><span>①</span></div>' : '';
-    var markB = '';
+    var markB = (cs && cs.markEnd!=null) ? '<div class="tl-mark b" style="left:'+(cs.markEnd*zoom)+'px"><span>②</span></div>' : '';
     var sceneMarks = state.scenes.map(function(s){
       if(s.startSec==null) return '';
       return '<div class="tl-scene-mark" style="left:'+(s.startSec*zoom)+'px" title="'+escapeHtml(s.name||'')+'"></div>';
@@ -1579,26 +1585,33 @@
     '</div>';
   }
   function renderCountSplitBox(dur){
-    var cs = ui.countSplit || (ui.countSplit = {open:false, bpm:null, markA:null});
+    var cs = ui.countSplit || (ui.countSplit = {open:false, bpm:null, markA:null, markEnd:null});
     if(!cs.open){
       return '<button class="btn small ghost" id="countSplitOpenBtn" type="button">8カウントで区切る…</button>';
     }
-    var canGen = cs.bpm>0 && cs.markA!=null;
+    var canGen = cs.bpm>0 && cs.markA!=null && cs.markEnd!=null && cs.markEnd>cs.markA;
     var info = '';
-    if(canGen){
-      var interval = 60/cs.bpm*8;
-      var n = Math.max(0, Math.floor(((dur||0)-cs.markA)/interval))+1;
-      info = '<p class="empty-hint">間隔 '+interval.toFixed(2)+'秒（8カウント）・シーンを'+n+'個追加します</p>';
+    if(cs.bpm>0 && cs.markA!=null && cs.markEnd!=null){
+      if(cs.markEnd>cs.markA){
+        var interval = 60/cs.bpm*8;
+        var n = Math.floor((cs.markEnd-cs.markA)/interval)+1;
+        info = '<p class="empty-hint">間隔 '+interval.toFixed(2)+'秒（8カウント）・シーンを'+n+'個生成します</p>';
+      } else {
+        info = '<p class="empty-hint" style="color:var(--danger);">終点は1カウント目より後の位置にしてください</p>';
+      }
     }
     return '<div class="count-split-box">' +
-      '<p class="empty-hint">曲のBPMを入力し、タイムライン上で「1カウント目」の位置を再生して合わせてマークしてください。8カウント間隔はBPMから自動計算されます。</p>' +
+      '<p class="empty-hint">曲のBPMを入力し、タイムライン上で「1カウント目」と「終点」の位置を再生して合わせてマークしてください。その間を8カウント間隔で均等に区切ります。</p>' +
       '<div class="field"><label for="countSplitBpm">BPM</label><input type="number" id="countSplitBpm" min="40" max="240" step="0.1" value="'+(cs.bpm||'')+'" placeholder="例: 128"></div>' +
       '<div class="row">' +
         '<button class="btn small" id="markABtn" type="button">1カウント目にマーク'+(cs.markA!=null?'（'+fmtAudioTime(cs.markA)+'）':'')+'</button>' +
       '</div>' +
+      '<div class="row">' +
+        '<button class="btn small" id="markEndBtn" type="button">終点にマーク'+(cs.markEnd!=null?'（'+fmtAudioTime(cs.markEnd)+'）':'')+'</button>' +
+      '</div>' +
       info +
       '<div class="row">' +
-        '<button class="btn small primary" id="generateCountScenesBtn" type="button" '+(canGen?'':'disabled')+'>この間隔でシーンを生成</button>' +
+        '<button class="btn small primary" id="generateCountScenesBtn" type="button" '+(canGen?'':'disabled')+'>この範囲でシーンを生成</button>' +
         '<button class="btn small ghost" id="countSplitCloseBtn" type="button">閉じる</button>' +
       '</div>' +
     '</div>';
@@ -1685,6 +1698,7 @@
     return '<div class="stage-panel">' +
       '<div class="stage-row">' +
         '<div class="stage-frame">'+renderStageSvg(sc,{mini:false})+
+          '<div class="stage-scene-title">'+(sceneIndex(sc.id)+1)+'. '+escapeHtml(sc.name||'無題のシーン')+'</div>'+
           '<button type="button" class="viewpoint-toggle" id="audienceToggleBtn" title="客席の向きを切り替え">'+
             '⇅ '+(audienceAtTop?'演者視点':'観客視点')+
           '</button>'+
@@ -2001,18 +2015,21 @@
   }
   function exportCurrentPng(){
     var sc = currentScene();
-    svgToPngBlob(standaloneSvg(sc), VB_W, VB_H).then(function(blob){
+    svgToPngBlob(standaloneSvg(sc), VB_W*EXPORT_SCALE, VB_H*EXPORT_SCALE).then(function(blob){
       saveViaDownloads((sc.name||'scene')+'.png', blob);
     }).catch(function(){ alert('PNGの生成に失敗しました。'); });
   }
   function exportContactSheet(scenes, filename){
     var cols = Math.ceil(Math.sqrt(scenes.length));
     var rows = Math.ceil(scenes.length/cols);
-    var cw = 320, ch = Math.round(cw*VB_H/VB_W)+26;
-    var promises = scenes.map(function(sc){ return svgToPngBlob(standaloneSvg(sc), VB_W, VB_H); });
+    var cw = 640, gap = 28, labelH = 34;
+    var cellImgH = Math.round(cw*VB_H/VB_W);
+    var ch = cellImgH + labelH;
+    var pitchW = cw + gap, pitchH = ch + gap;
+    var promises = scenes.map(function(sc){ return svgToPngBlob(standaloneSvg(sc), VB_W*EXPORT_SCALE, VB_H*EXPORT_SCALE); });
     Promise.all(promises).then(function(blobs){
       var canvas = document.createElement('canvas');
-      canvas.width = cols*cw; canvas.height = rows*ch;
+      canvas.width = cols*pitchW + gap; canvas.height = rows*pitchH + gap;
       var ctx = canvas.getContext('2d');
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
       var loaded = blobs.map(function(b){ return new Promise(function(res){
@@ -2023,10 +2040,11 @@
       Promise.all(loaded).then(function(imgs){
         imgs.forEach(function(img, i){
           var r = Math.floor(i/cols), c = i%cols;
-          var x = c*cw, y = r*ch;
-          ctx.drawImage(img, x, y, cw, cw*VB_H/VB_W);
-          ctx.fillStyle = '#333'; ctx.font = '14px sans-serif';
-          ctx.fillText((i+1)+'. '+(scenes[i].name||''), x+4, y+ch-6);
+          var x = gap + c*pitchW, y = gap + r*pitchH;
+          ctx.strokeStyle = '#dddddd'; ctx.strokeRect(x, y, cw, cellImgH);
+          ctx.drawImage(img, x, y, cw, cellImgH);
+          ctx.fillStyle = '#333'; ctx.font = '18px sans-serif';
+          ctx.fillText((i+1)+'. '+(scenes[i].name||'無題'), x+4, y+cellImgH+24);
         });
         canvas.toBlob(function(blob){ saveViaDownloads(filename, blob); }, 'image/png');
       });
@@ -2312,9 +2330,10 @@
       track.addEventListener('pointercancel', function(){ dragging=false; ui.audioScrubbing=false; hideTooltip(); });
     })();
     on('audioAddSceneBtn','click', function(){ addScene({ startSec: playbackTime() }); });
-    on('countSplitOpenBtn','click', function(){ ui.countSplit = {open:true, bpm:ui.countSplit?ui.countSplit.bpm:null, markA:null}; render(); });
-    on('countSplitCloseBtn','click', function(){ ui.countSplit = {open:false, bpm:null, markA:null}; render(); });
+    on('countSplitOpenBtn','click', function(){ ui.countSplit = {open:true, bpm:ui.countSplit?ui.countSplit.bpm:null, markA:null, markEnd:null}; render(); });
+    on('countSplitCloseBtn','click', function(){ ui.countSplit = {open:false, bpm:null, markA:null, markEnd:null}; render(); });
     on('markABtn','click', function(){ ui.countSplit.markA = playbackTime(); render(); });
+    on('markEndBtn','click', function(){ ui.countSplit.markEnd = playbackTime(); render(); });
     on('countSplitBpm','change', function(){
       var v = parseFloat(this.value);
       ui.countSplit.bpm = (v>0) ? v : null;
@@ -2597,32 +2616,28 @@
   }
   function generateCountScenes(){
     var cs = ui.countSplit;
-    if(!cs || !(cs.bpm>0) || cs.markA==null) return;
+    if(!cs || !(cs.bpm>0) || cs.markA==null || cs.markEnd==null || cs.markEnd<=cs.markA) return;
     var interval = 60/cs.bpm*8;
-    var dur = playbackDuration();
-    var n = Math.max(0, Math.floor((dur - cs.markA)/interval)) + 1;
+    var n = Math.floor((cs.markEnd-cs.markA)/interval) + 1;
     if(n<1) return;
-    if(!confirm('『'+fmtAudioTime(cs.markA)+'』からBPM'+cs.bpm+'（8カウント='+interval.toFixed(2)+'秒）間隔で、シーンを'+n+'個追加します。よろしいですか？')) return;
+    if(!confirm('『'+fmtAudioTime(cs.markA)+'』から『'+fmtAudioTime(cs.markEnd)+'』までBPM'+cs.bpm+'（8カウント='+interval.toFixed(2)+'秒）間隔で、シーンを'+n+'個生成します。シーン1の開始位置も1カウント目に合わせます。よろしいですか？')) return;
     pushHistory();
-    var baseSc = currentScene();
-    var idx = baseSc ? sceneIndex(baseSc.id) : state.scenes.length-1;
-    var baseCount = state.scenes.length;
-    var firstNewId = null;
-    for(var i=0;i<n;i++){
+    var baseSc = state.scenes[0];
+    baseSc.startSec = cs.markA;
+    for(var i=1;i<n;i++){
       var t = cs.markA + i*interval;
       var ns = {
-        id:uid('sc'), name:'シーン'+(baseCount+i+1), section:'transition', color:'#8d8698', timeLabel:'',
+        id:uid('sc'), name:'', section:'transition', color:'#8d8698', timeLabel:'',
         startSec:t, countNotes:{},
         note:'', videoLink:'', lightingNote:'', showIncomingPath:true, useActualPath:false,
-        presence: baseSc ? Object.assign({}, baseSc.presence) : {},
-        positions: baseSc ? JSON.parse(JSON.stringify(baseSc.positions)) : {},
-        groups: baseSc ? JSON.parse(JSON.stringify(baseSc.groups||[])) : []
+        presence: Object.assign({}, baseSc.presence),
+        positions: JSON.parse(JSON.stringify(baseSc.positions)),
+        groups: JSON.parse(JSON.stringify(baseSc.groups||[]))
       };
-      state.scenes.splice(idx+1+i, 0, ns);
-      if(i===0) firstNewId = ns.id;
+      state.scenes.splice(i, 0, ns);
     }
-    state.currentSceneId = firstNewId;
-    ui.countSplit = {open:false, bpm:null, markA:null};
+    state.currentSceneId = baseSc.id;
+    ui.countSplit = {open:false, bpm:null, markA:null, markEnd:null};
     markDirty(); render();
   }
 
@@ -2805,37 +2820,58 @@
     var svg = document.querySelector('.present-stage-wrap .stage-svg');
     if(!svg) return;
     var DURATION = 650;
-    var toMove = [];
-    Array.prototype.forEach.call(svg.querySelectorAll('.koma[data-member-id]'), function(el){
-      var id = el.getAttribute('data-member-id');
-      var fromPos = fromScene.positions[id], toPos = toScene.positions[id];
-      if(fromPos && fromScene.presence[id] && toPos){
-        var fx = fromPos.x/100*VB_W, fy = fromPos.y/100*VB_H;
-        var tx = toPos.x/100*VB_W, ty = toPos.y/100*VB_H;
-        el.style.transition = 'none';
-        el.setAttribute('transform','translate('+fx+','+fy+')');
-        toMove.push({ el:el, x:tx, y:ty });
-      }
-    });
-    var toReveal = [];
+    var pathByMember = {};
     Array.prototype.forEach.call(svg.querySelectorAll('.motion-path[data-member-id]'), function(el){
-      var len = el.getTotalLength ? el.getTotalLength() : 0;
-      el.style.transition = 'none';
-      el.style.strokeDasharray = len;
-      el.style.strokeDashoffset = len;
-      toReveal.push(el);
+      pathByMember[el.getAttribute('data-member-id')] = el;
     });
+    var items = [];
+    Array.prototype.forEach.call(svg.querySelectorAll('.koma[data-member-id]'), function(koma){
+      var id = koma.getAttribute('data-member-id');
+      var fromPos = fromScene.positions[id], toPos = toScene.positions[id];
+      if(!fromPos || !fromScene.presence[id] || !toPos) return;
+      var fx = fromPos.x/100*VB_W, fy = fromPos.y/100*VB_H;
+      var tx = toPos.x/100*VB_W, ty = toPos.y/100*VB_H;
+      var finalTransform = koma.getAttribute('transform');
+      var item = { koma:koma, finalTransform:finalTransform, fx:fx, fy:fy, tx:tx, ty:ty };
+      var pathEl = pathByMember[id];
+      var len = pathEl && pathEl.getTotalLength ? pathEl.getTotalLength() : 0;
+      if(pathEl && len>0){
+        item.pathEl = pathEl; item.len = len;
+        item.origDasharray = pathEl.style.strokeDasharray;
+        pathEl.style.transition = 'none';
+        pathEl.style.strokeDasharray = len;
+        pathEl.style.strokeDashoffset = len;
+      }
+      koma.style.transition = 'none';
+      koma.setAttribute('transform','translate('+fx+','+fy+')');
+      items.push(item);
+    });
+    if(!items.length) return;
     void svg.getBoundingClientRect();
-    requestAnimationFrame(function(){
-      toMove.forEach(function(o){
-        o.el.style.transition = 'transform '+DURATION+'ms ease';
-        o.el.setAttribute('transform','translate('+o.x+','+o.y+')');
+    var start = null;
+    function step(ts){
+      if(start===null) start = ts;
+      var f = Math.min(1, (ts-start)/DURATION);
+      var e = f<0.5 ? 2*f*f : 1-Math.pow(-2*f+2,2)/2; /* easeInOutQuad, applied identically to koma position and path reveal so they never drift apart */
+      items.forEach(function(it){
+        if(it.pathEl){
+          var pt = it.pathEl.getPointAtLength(e*it.len);
+          it.koma.setAttribute('transform','translate('+pt.x+','+pt.y+')');
+          it.pathEl.style.strokeDashoffset = it.len*(1-e);
+        } else {
+          it.koma.setAttribute('transform','translate('+(it.fx+(it.tx-it.fx)*e)+','+(it.fy+(it.ty-it.fy)*e)+')');
+        }
       });
-      toReveal.forEach(function(el){
-        el.style.transition = 'stroke-dashoffset '+DURATION+'ms linear';
-        el.style.strokeDashoffset = '0';
+      if(f<1){ requestAnimationFrame(step); return; }
+      items.forEach(function(it){
+        it.koma.setAttribute('transform', it.finalTransform);
+        if(it.pathEl){
+          it.pathEl.style.strokeDasharray = it.origDasharray;
+          it.pathEl.style.strokeDashoffset = '';
+        }
       });
-    });
+    }
+    requestAnimationFrame(step);
   }
   function togglePresentPlay(){
     if(hasAudioSource()){
