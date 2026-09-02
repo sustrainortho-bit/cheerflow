@@ -62,8 +62,6 @@
   .field input:focus, .field select:focus{ border-color:var(--accent); outline:none; }
   .empty-hint{ color:var(--text-muted); font-size:12px; line-height:1.6; }
   .divider{ height:1px; background:var(--border); border:none; margin:8px 0; }
-  .legend{ display:flex; flex-wrap:wrap; gap:8px 12px; font-size:11px; color:var(--text-muted); }
-  .legend .item{ display:flex; align-items:center; gap:5px; }
   .role-dot{ width:11px; height:11px; border-radius:50%; flex:0 0 auto; }
   .toggle-line{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--text); }
   .switch{ position:relative; width:36px; height:20px; flex:0 0 auto; }
@@ -215,12 +213,6 @@
   .headcount-row .num{ font-family:'IBM Plex Mono'; font-weight:700; min-width:26px; text-align:center; }
   .range-row{ display:flex; align-items:center; gap:8px; }
   .range-row input[type="range"]{ flex:1; }
-  .count-row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-  .count-btn{
-    width:28px; height:28px; border-radius:7px; border:1px solid var(--border); background:var(--surface);
-    color:var(--text-muted); font-weight:700; cursor:pointer; font-family:'IBM Plex Mono',monospace;
-  }
-  .count-btn.on{ background:var(--accent); border-color:var(--accent); color:var(--accent-contrast); }
   .count-notes-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
   .count-note-cell{ display:flex; align-items:center; gap:5px; border:1px solid var(--border); border-radius:7px; padding:4px 6px; background:var(--surface); }
   .count-note-cell span{ font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--text-muted); font-size:11px; width:12px; }
@@ -442,7 +434,7 @@
   function defaultStage(){
     return { widthM:8, depthM:6, frontCount:9, frontLabels:'', depthCount:6, depthLabels:'',
       showGrid:true, showFrontNumbers:true, showDepthNumbers:false, showCenter:true, showDiagonal:false, showThirds:false,
-      bg:{ dataUrl:'', opacity:60 }, komaScale:100, snapGrid:false, showRoleBadges:true };
+      komaScale:100, snapGrid:false, showRoleBadges:true };
   }
   function emptyState(){
     return {
@@ -504,13 +496,14 @@
     }, 600);
   }
 
+  var footerScrollLeft = 0;
   var ui = {
     screen: 'home', sidebarOpen:false, sidebarTab:'placement',
     selectedIds:[], isReadOnly:false, saveStatus:'idle', dirty:false,
     present:false, presentIndex:0, presentPlaying:false, presentTimer:null,
     stuntDrawerGroupId:null, audioScrubbing:false, exportMenuOpen:false,
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
-    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false, boardPopover:null
+    undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null
   };
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
@@ -706,6 +699,13 @@
   function findScene(id){ return state.scenes.filter(function(s){ return s.id===id; })[0]; }
   function currentScene(){ return findScene(state.currentSceneId) || state.scenes[0]; }
   function sceneIndex(id){ for(var i=0;i<state.scenes.length;i++){ if(state.scenes[i].id===id) return i; } return -1; }
+  function selectScene(sceneId){
+    state.currentSceneId = sceneId; ui.selectedIds=[];
+    var sc = findScene(sceneId);
+    if(sc && sc.startSec!=null) playbackSeek(sc.startSec);
+    render();
+    if(sc && sc.startSec!=null) updateTimelineUI(sc.startSec, playbackDuration());
+  }
   function markDirty(){ ui.dirty = true; }
   function fmtTime(iso){
     if(!iso) return '未保存';
@@ -723,9 +723,6 @@
   }
   function groupLabel(g){ return g.memberIds.map(function(id){ return memberName(id); }).join('・'); }
   function hueVar(cat, defs){ return (defs[cat]||defs.other||{hue:'--hue-grey'}).hue; }
-  function legendItem(hue, label){
-    return '<span class="item"><span class="role-dot" style="background:var('+hue+');"></span>'+label+'</span>';
-  }
   function field(label,type,id,val,ph){
     return '<div class="field"><label for="'+id+'">'+label+'</label><input type="'+type+'" id="'+id+'" value="'+escapeHtml(val)+'" placeholder="'+escapeHtml(ph||'')+'"></div>';
   }
@@ -951,6 +948,20 @@
     sc.groups = JSON.parse(JSON.stringify(prev.groups||[]));
     markDirty(); render();
   }
+  function copyFormation(sc){
+    ui.formationClipboard = {
+      positions: JSON.parse(JSON.stringify(sc.positions)),
+      groups: JSON.parse(JSON.stringify(sc.groups||[]))
+    };
+    render();
+  }
+  function pasteFormation(sc){
+    if(!ui.formationClipboard) return;
+    pushHistory();
+    sc.positions = JSON.parse(JSON.stringify(ui.formationClipboard.positions));
+    sc.groups = JSON.parse(JSON.stringify(ui.formationClipboard.groups||[]));
+    markDirty(); render();
+  }
 
   /* ================= stage SVG rendering ================= */
   function renderKomaSvg(t){
@@ -1044,13 +1055,6 @@
     g.push('<text x="'+(VB_W/2)+'" y="'+(VB_H-34)+'" text-anchor="middle" font-size="13" style="fill:var(--text-muted);font-family:Manrope,sans-serif;letter-spacing:.1em;">客席</text>');
     return g.join('');
   }
-  function renderBg(){
-    var bg = state.stage.bg;
-    if(!bg || !bg.dataUrl) return '';
-    var op = (bg.opacity==null?60:bg.opacity)/100;
-    return '<image href="'+bg.dataUrl+'" x="0" y="0" width="'+VB_W+'" height="'+VB_H+'" preserveAspectRatio="none" opacity="'+op+'"></image>';
-  }
-
   function renderPaths(scene){
     if(!scene.showIncomingPath) return '';
     var idx = sceneIndex(scene.id);
@@ -1167,7 +1171,7 @@
   function renderStageSvg(scene, opts){
     opts = opts || {};
     var mini = !!opts.mini;
-    var body = [renderFloorDefs(), renderBg()];
+    var body = [renderFloorDefs()];
     if(!mini) body.push(renderPaths(scene));
     if(!mini) body.push(renderGroupOutlines(scene));
     var els = [];
@@ -1195,6 +1199,9 @@
     var readonlyBanner = ui.isReadOnly ?
       '<div class="readonly-banner">この共有リンクは閲覧専用です。表示中の変更はこの端末にのみ反映され、保存はされません。編集を反映するにはオーナーに依頼してください。</div>' : '';
 
+    var prevFooter = document.querySelector('.footer-strip');
+    if(prevFooter) footerScrollLeft = prevFooter.scrollLeft;
+
     root.innerHTML =
       '<div class="editor-shell">' +
         readonlyBanner +
@@ -1216,6 +1223,8 @@
     positionYtPortal();
     fitStageFrame();
     observeStagePanelResize();
+    var newFooter = document.querySelector('.footer-strip');
+    if(newFooter) newFooter.scrollLeft = footerScrollLeft;
     if(state.audio.sourceType==='youtube' && state.audio.youtubeUrl && !ui.ytEmbedBlocked && !ui.present){
       loadYoutubeVideo(state.audio.youtubeUrl);
     }
@@ -1340,7 +1349,7 @@
     var presence = {}; members.forEach(function(m){ presence[m.id]=true; });
     var scene1 = {
       id:uid('sc'), name:'シーン1', section:'opening', color:SECTION_DEFS.opening.color, timeLabel:'', startSec:null,
-      countMark:null, countNotes:{}, note:'', videoLink: opts.audio && opts.audio.sourceType==='youtube' ? opts.audio.youtubeUrl : '',
+      countNotes:{}, note:'', videoLink: opts.audio && opts.audio.sourceType==='youtube' ? opts.audio.youtubeUrl : '',
       lightingNote:'', showIncomingPath:true, useActualPath:false,
       presence:presence, positions:{}, groups:[]
     };
@@ -1428,11 +1437,14 @@
         ) : '')) +
       '</div>'
     ) : '';
+    var curIdx = sceneIndex(state.currentSceneId);
     return '<header class="editor-header">' +
       '<div class="brand-mini" id="brandHome"><span>Cheer<em>Flow</em></span></div>' +
       '<input class="title-input" id="titleInput" value="'+escapeHtml(state.title)+'" aria-label="ルーティン名">' +
       '<div class="header-spacer"></div>' +
       '<span class="save-status'+(ui.saveStatus==='error'?' err':'')+'">'+saveStatusText()+'</span>' +
+      '<button class="btn small ghost" id="prevSceneBtn" title="前のシーン" '+(curIdx<=0?'disabled':'')+'>◀ 前のシーン</button>' +
+      '<button class="btn small ghost" id="nextSceneBtn" title="次のシーン" '+(curIdx<0||curIdx>=state.scenes.length-1?'disabled':'')+'>次のシーン ▶</button>' +
       '<button class="btn small ghost icon" id="undoBtn" title="元に戻す" '+(ui.undoStack.length?'':'disabled')+'>戻る</button>' +
       '<button class="btn small ghost icon" id="redoBtn" title="やり直し" '+(ui.redoStack.length?'':'disabled')+'>やり直す</button>' +
       '<button class="btn small" id="previewBtn">プレビュー</button>' +
@@ -1666,6 +1678,10 @@
         '<button class="btn small" data-act="preset-auto">自動整列</button>' +
       '</div>' +
       '<button class="btn small" data-act="copy-prev" style="width:100%;" '+(sceneIndex(sc.id)<=0?'disabled':'')+'>直前のシーンの配置にセット</button>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button class="btn small" data-act="copy-formation" style="flex:1;">フォーメーションをコピー</button>' +
+        '<button class="btn small" data-act="paste-formation" style="flex:1;" '+(ui.formationClipboard?'':'disabled')+'>フォーメーションを貼り付け</button>' +
+      '</div>' +
       '</div>' +
     '</details>');
     out.push('<hr class="divider">');
@@ -1718,9 +1734,6 @@
     out.push('<h2 style="font-size:12px;margin:0;">コマの大きさ</h2>');
     out.push('<div class="range-row"><input type="range" id="komaScale" min="60" max="220" value="'+(state.stage.komaScale||100)+'"><span class="mono" id="komaScaleVal" style="width:38px;">'+(state.stage.komaScale||100)+'%</span></div>');
     out.push(toggleRow('snapGrid','グリッドスナップ', state.stage.snapGrid));
-    out.push('<hr class="divider">');
-    out.push('<div class="legend">' + PART_ORDER.map(function(k){ return legendItem(PART_DEFS[k].hue, PART_DEFS[k].label); }).join('') + '</div>');
-    out.push('<div class="legend">' + Object.keys(STUNT_ROLES).map(function(k){ return legendItem(STUNT_ROLES[k].hue, STUNT_ROLES[k].label+'(役割)'); }).join('') + '</div>');
     return out.join('');
   }
 
@@ -1729,8 +1742,6 @@
     var sectionOptions = SECTION_ORDER.map(function(k){
       return '<option value="'+k+'" '+(sc.section===k?'selected':'')+'>'+SECTION_DEFS[k].label+'</option>';
     }).join('');
-    var countBtns = [];
-    for(var c=1;c<=8;c++){ countBtns.push('<button type="button" class="count-btn'+(sc.countMark===c?' on':'')+'" data-act="count-mark" data-c="'+c+'">'+c+'</button>'); }
     var countNoteCells = [];
     for(var c2=1;c2<=8;c2++){
       countNoteCells.push('<div class="count-note-cell"><span>'+c2+'</span><input type="text" data-act="count-note" data-c="'+c2+'" value="'+escapeHtml((sc.countNotes||{})[c2]||'')+'" placeholder="メモ"></div>');
@@ -1741,7 +1752,6 @@
     out.push('<div class="field"><label for="sceneSection">セクション</label><select id="sceneSection">'+sectionOptions+'</select></div>');
     out.push('<div class="field"><label for="sceneStartSec">開始時間（秒）</label><input type="number" id="sceneStartSec" step="0.1" min="0" value="'+(sc.startSec!=null?sc.startSec:'')+'" placeholder="例: 12.5"></div>');
     out.push('<hr class="divider">');
-    out.push('<div class="field"><label>8カウント（到達カウント）</label><div class="count-row">'+countBtns.join('')+'</div></div>');
     out.push('<div class="field"><label>カウント別メモ</label><div class="count-notes-grid">'+countNoteCells.join('')+'</div></div>');
     out.push('<hr class="divider">');
     out.push('<div class="field"><label for="sceneNote">シーン全体のメモ</label><textarea id="sceneNote" style="min-height:70px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:9px;" placeholder="動きの説明やキュー、注意点など">'+escapeHtml(sc.note||'')+'</textarea></div>');
@@ -1797,11 +1807,6 @@
     out.push('<div class="field"><label for="frontLabels">正面ラベル（任意）</label><input type="text" id="frontLabels" value="'+escapeHtml(st.frontLabels||'')+'" placeholder="例: 2 1 0 1 2"></div>');
     out.push('<div class="field"><label for="depthCount">奥行きの線の数</label><input type="number" id="depthCount" value="'+st.depthCount+'"></div>');
     out.push('<div class="field"><label for="depthLabels">奥行きラベル（任意）</label><input type="text" id="depthLabels" value="'+escapeHtml(st.depthLabels||'')+'" placeholder="例: 前 中 後"></div>');
-    out.push('<hr class="divider">');
-    out.push('<h2 style="font-size:12px;margin:0;">背景画像</h2>');
-    out.push('<input type="file" id="bgUpload" accept="image/*">');
-    out.push('<div class="range-row"><label style="min-width:50px;font-size:12px;color:var(--text-muted);">濃さ</label><input type="range" id="bgOpacity" min="10" max="100" value="'+(st.bg.opacity||60)+'"><span class="mono" id="bgOpacityVal" style="width:38px;">'+(st.bg.opacity||60)+'%</span></div>');
-    out.push('<button class="btn small danger ghost" id="bgClear">背景画像を削除</button>');
     out.push('<hr class="divider">');
     out.push('<h2 style="font-size:12px;margin:0;">プロジェクト全体メモ</h2>');
     out.push('<textarea id="projectMemo" style="min-height:80px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:9px;">'+escapeHtml(state.projectMemo||'')+'</textarea>');
@@ -1890,7 +1895,7 @@
       '<div class="present-info">' +
         '<span class="sect" style="color:'+sect.color+';font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:12px;">'+sect.label+'</span>' +
         '<h2>'+escapeHtml(sc.name||'無題のシーン')+'</h2>' +
-        '<span class="mono" style="color:var(--text-muted);">'+escapeHtml(sceneTimeDisplay(sc))+(sc.countMark?('　count '+sc.countMark):'')+'</span>' +
+        '<span class="mono" style="color:var(--text-muted);">'+escapeHtml(sceneTimeDisplay(sc))+'</span>' +
         '<p class="present-note">'+escapeHtml(sc.note||'')+'</p>' +
         (cnItems.length ? '<div class="present-countnotes">'+cnItems.join('')+'</div>' : '') +
       '</div>' +
@@ -1996,7 +2001,7 @@
       var cnLine = Object.keys(cn).filter(function(k){return cn[k];}).map(function(k){ return k+':'+cn[k]; }).join(' / ');
       return '<div class="print-scene">' +
         '<h2>'+(i+1)+'. '+escapeHtml(sc.name||'無題')+'</h2>' +
-        '<p>'+sect.label+' ・ '+escapeHtml(sceneTimeDisplay(sc))+(sc.countMark?(' ・ count '+sc.countMark):'')+'</p>' +
+        '<p>'+sect.label+' ・ '+escapeHtml(sceneTimeDisplay(sc))+'</p>' +
         renderStageSvg(sc,{mini:false}).replace(' stage-main','') +
         '<p>'+escapeHtml(sc.note||'')+'</p>' +
         (cnLine ? '<p>'+escapeHtml(cnLine)+'</p>' : '') +
@@ -2086,12 +2091,15 @@
     /* footer strip */
     onAll('.thumb-card','click', function(e){
       if(e.target.closest('button')) return;
-      var sceneId = this.getAttribute('data-scene-id');
-      state.currentSceneId = sceneId; ui.selectedIds=[];
-      var sc = findScene(sceneId);
-      if(sc && sc.startSec!=null) playbackSeek(sc.startSec);
-      render();
-      if(sc && sc.startSec!=null) updateTimelineUI(sc.startSec, playbackDuration());
+      selectScene(this.getAttribute('data-scene-id'));
+    });
+    on('prevSceneBtn','click', function(){
+      var i = sceneIndex(state.currentSceneId);
+      if(i>0) selectScene(state.scenes[i-1].id);
+    });
+    on('nextSceneBtn','click', function(){
+      var i = sceneIndex(state.currentSceneId);
+      if(i>=0 && i<state.scenes.length-1) selectScene(state.scenes[i+1].id);
     });
     onAll('[data-act="thumb-left"]','click', function(e){
       e.stopPropagation();
@@ -2298,6 +2306,8 @@
     onAll('[data-act="preset-block"]','click', function(){ arrangeBlock(presetIds(), currentScene()); });
     onAll('[data-act="preset-auto"]','click', function(){ pushHistory(); autoArrangeAll(currentScene()); markDirty(); render(); });
     onAll('[data-act="copy-prev"]','click', function(){ copyPreviousArrangement(currentScene()); });
+    onAll('[data-act="copy-formation"]','click', function(){ copyFormation(currentScene()); });
+    onAll('[data-act="paste-formation"]','click', function(){ pasteFormation(currentScene()); });
     onAll('[data-act="group-toggle"]','click', function(){ toggleGroup(selectedPresentIds(), currentScene()); });
     onAll('[data-act="create-stunt-pick"]','click', function(){
       if(this.disabled) return;
@@ -2382,13 +2392,6 @@
     on('sceneMemoInline','change', function(){ pushHistory(); currentScene().note=this.value; markDirty(); render(); });
     on('toggleIncoming','change', function(){ pushHistory(); currentScene().showIncomingPath=this.checked; markDirty(); render(); });
     on('toggleActualPath','change', function(){ pushHistory(); currentScene().useActualPath=this.checked; markDirty(); render(); });
-    onAll('[data-act="count-mark"]','click', function(){
-      pushHistory();
-      var c = parseInt(this.getAttribute('data-c'),10);
-      var sc = currentScene();
-      sc.countMark = (sc.countMark===c) ? null : c;
-      markDirty(); render();
-    });
     onAll('[data-act="count-note"]','change', function(){
       pushHistory();
       var c = this.getAttribute('data-c');
@@ -2441,28 +2444,6 @@
     ['showGrid','showFrontNumbers','showDepthNumbers','showCenter','showDiagonal','showThirds','showRoleBadges'].forEach(function(key){
       on(key,'change', function(){ pushHistory(); state.stage[key]=this.checked; markDirty(); render(); });
     });
-    on('bgOpacity','pointerdown', function(){ pushHistory(); });
-    on('bgOpacity','input', function(){
-      state.stage.bg.opacity = parseInt(this.value,10);
-      var val=document.getElementById('bgOpacityVal'); if(val) val.textContent=this.value+'%';
-      markDirty();
-      var svg = document.querySelector('.stage-main');
-      if(svg){ svg.outerHTML = renderStageSvg(currentScene(),{mini:false}); wireStageEvents(); }
-    });
-    on('bgClear','click', function(){ pushHistory(); state.stage.bg.dataUrl=''; markDirty(); render(); });
-    on('bgUpload','change', function(){
-      var f = this.files && this.files[0];
-      if(!f) return;
-      if(f.size > 3*1024*1024){ alert('画像サイズが大きすぎます（3MB以下推奨）'); return; }
-      var reader = new FileReader();
-      reader.onload = function(){
-        pushHistory();
-        state.stage.bg.dataUrl = reader.result;
-        markDirty(); render();
-      };
-      reader.readAsDataURL(f);
-    });
-
     /* stunt drawer */
     on('drawerClose','click', function(){ ui.stuntDrawerGroupId=null; render(); });
     on('drawerBackdrop','click', function(){ ui.stuntDrawerGroupId=null; render(); });
@@ -2523,7 +2504,7 @@
     });
     var copy = {
       id:uid('sc'), name: src.name + (flip?'（反転）':'のコピー'), section:src.section, color:src.color,
-      timeLabel:src.timeLabel, startSec:null, countMark:src.countMark, countNotes:Object.assign({}, src.countNotes||{}),
+      timeLabel:src.timeLabel, startSec:null, countNotes:Object.assign({}, src.countNotes||{}),
       note:src.note, videoLink:src.videoLink, lightingNote:src.lightingNote,
       showIncomingPath:src.showIncomingPath, useActualPath:false,
       presence:Object.assign({}, src.presence), positions:positions, groups:groups
@@ -2537,7 +2518,7 @@
     var ns = {
       id:uid('sc'), name:'新しいシーン', section:'transition', color:'#8d8698', timeLabel:'',
       startSec: opts.startSec!=null ? opts.startSec : null,
-      countMark:null, countNotes:{},
+      countNotes:{},
       note:'', videoLink:'', lightingNote:'', showIncomingPath:true, useActualPath:false,
       presence: sc ? Object.assign({}, sc.presence) : {},
       positions: sc ? JSON.parse(JSON.stringify(sc.positions)) : {},
@@ -2566,7 +2547,7 @@
       var t = cs.markA + i*interval;
       var ns = {
         id:uid('sc'), name:'シーン'+(baseCount+i+1), section:'transition', color:'#8d8698', timeLabel:'',
-        startSec:t, countMark:null, countNotes:{},
+        startSec:t, countNotes:{},
         note:'', videoLink:'', lightingNote:'', showIncomingPath:true, useActualPath:false,
         presence: baseSc ? Object.assign({}, baseSc.presence) : {},
         positions: baseSc ? JSON.parse(JSON.stringify(baseSc.positions)) : {},
