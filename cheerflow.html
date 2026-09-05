@@ -2340,8 +2340,10 @@
       var toolbar = document.getElementById('noteToolbar');
       if(!toolbar) return;
       try{ document.execCommand('styleWithCSS', false, true); }catch(e){}
-      var activeCell = null;
-      onAll('.rich-cell','focusin', function(){ activeCell = this; });
+      function activeRichCell(){
+        var el = document.activeElement;
+        return (el && el.classList && el.classList.contains('rich-cell')) ? el : null;
+      }
       function preserveFocus(e){ e.preventDefault(); }
       Array.prototype.forEach.call(toolbar.querySelectorAll('button'), function(b){
         b.addEventListener('mousedown', preserveFocus);
@@ -2349,6 +2351,7 @@
       on('noteBoldBtn','click', function(){ document.execCommand('bold'); });
       on('noteUnderlineBtn','click', function(){ document.execCommand('underline'); });
       function stepFontSize(delta){
+        var activeCell = activeRichCell();
         if(!activeCell) return;
         var sel = window.getSelection();
         if(!sel.rangeCount || sel.isCollapsed) return;
