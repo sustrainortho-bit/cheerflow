@@ -791,15 +791,24 @@
   }
   /* ノートの書式設定（太字/下線/文字色/文字サイズ）で入力されるHTMLは、
      Firestoreの「リンクを知っていれば誰でも読み書き可」というセキュリティモデル上、
-     改ざんされたデータがそのまま届く可能性がある。innerHTMLとして描画する前に
-     許可タグ(b/u/span/br/font)以外は展開し、style属性もcolor/font-sizeのみに限定する。 */
+     改ざんされたデータがそのまま届く可能性がある。
+     重要：パース自体にdiv.innerHTML=を使うと、<img onerror>等はDOMに挿入された瞬間
+     （ツリーを検査してタグを剥がすより前）に読み込み失敗イベントが発火し、ハンドラが
+     実行されてしまう。DOMParserが作るDocumentは「fully active」ではないため画像取得や
+     関連イベントが発火しない、という仕様上の性質を利用してパースする。 */
   function sanitizeRichText(html){
-    var div = document.createElement('div');
-    div.innerHTML = String(html||'');
+    var doc = new DOMParser().parseFromString('<div>'+String(html||'')+'</div>', 'text/html');
+    var div = doc.body.firstChild;
+    if(!div) return '';
     var allowedTags = { B:1, U:1, SPAN:1, BR:1, FONT:1 };
+    var dropEntirelyTags = { SCRIPT:1, STYLE:1, IFRAME:1, OBJECT:1, EMBED:1 };
     (function walk(node){
       Array.prototype.slice.call(node.childNodes).forEach(function(child){
         if(child.nodeType===1){
+          if(dropEntirelyTags[child.tagName]){
+            node.removeChild(child);
+            return;
+          }
           if(!allowedTags[child.tagName]){
             while(child.firstChild) node.insertBefore(child.firstChild, child);
             node.removeChild(child);
@@ -826,9 +835,10 @@
     return div.innerHTML;
   }
   function stripHtml(html){
-    var div = document.createElement('div');
-    div.innerHTML = String(html||'');
-    return div.textContent || '';
+    /* sanitizeRichText()と同じ理由でDOMParserを使う（div.innerHTML=だとimg onerror等が
+       検査前に発火し得る）。ここはテキスト抽出用途なので許可タグの概念は不要。 */
+    var doc = new DOMParser().parseFromString(String(html||''), 'text/html');
+    return doc.body.textContent || '';
   }
   function clampPct(v){ return Math.max(2, Math.min(98, v)); }
   function member(id){ return state.members.filter(function(m){ return m.id===id; })[0]; }
