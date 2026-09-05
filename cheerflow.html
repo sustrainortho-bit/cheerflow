@@ -805,7 +805,11 @@
             node.removeChild(child);
             return;
           }
-          var style = child.getAttribute('style');
+          var style = child.getAttribute('style') || '';
+          var legacyColor = child.getAttribute('color');
+          if(legacyColor && /^#?[0-9a-fA-F]{3,8}$/.test(legacyColor)){
+            style += ';color:'+(legacyColor.charAt(0)==='#'?legacyColor:'#'+legacyColor);
+          }
           Array.prototype.slice.call(child.attributes).forEach(function(attr){ child.removeAttribute(attr.name); });
           if(style){
             var safe = style.replace(/[^a-zA-Z0-9#: ;.,%-]/g,'').split(';').filter(function(rule){
@@ -2335,6 +2339,7 @@
     (function(){
       var toolbar = document.getElementById('noteToolbar');
       if(!toolbar) return;
+      try{ document.execCommand('styleWithCSS', false, true); }catch(e){}
       var activeCell = null;
       onAll('.rich-cell','focusin', function(){ activeCell = this; });
       function preserveFocus(e){ e.preventDefault(); }
