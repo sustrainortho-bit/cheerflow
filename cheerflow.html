@@ -318,6 +318,30 @@
   .present-dots button.on{ background:var(--accent); }
   .present-note{ color:var(--text-muted); font-size:13px; max-width:560px; margin:0 auto; }
 
+  /* ---------- note overlay ---------- */
+  .note-overlay{
+    position:fixed; inset:0; background:var(--bg); z-index:100; display:flex; flex-direction:column; padding:16px 20px 20px;
+  }
+  .note-top{ display:flex; align-items:center; gap:10px; flex:0 0 auto; padding-bottom:10px; }
+  .note-top h2{ margin:0; font-size:16px; }
+  .note-scroll{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
+  table.note-table{ width:100%; table-layout:fixed; border-collapse:collapse; }
+  table.note-table th, table.note-table td{ border:1px solid var(--floor-line); padding:0; }
+  table.note-table thead th{
+    position:sticky; top:0; z-index:1; font-size:11px; color:var(--text-muted); font-weight:600;
+    padding:6px 4px; background:var(--surface-2, var(--surface)); text-align:center;
+  }
+  table.note-table td.note-seq{ font-size:12px; font-weight:700; text-align:center; color:var(--text-muted); }
+  table.note-table td.note-name input, table.note-table td.note-count input{
+    width:100%; height:52px; border:none; background:transparent; font-family:inherit; font-size:14px; text-align:center; padding:2px 4px;
+  }
+  table.note-table td.note-name input{ text-align:left; font-weight:700; }
+  table.note-table td.note-memo textarea{
+    width:100%; height:52px; border:none; background:transparent; font-family:inherit; font-size:13px; padding:4px 6px;
+    resize:none; overflow-y:auto; line-height:1.4;
+  }
+  table.note-table input:focus, table.note-table textarea:focus{ background:var(--accent-soft); outline:2px solid var(--accent); outline-offset:-2px; }
+
   /* ---------- print ---------- */
   #printArea{ display:none; }
   @media print{
@@ -333,6 +357,10 @@
     .print-cell .stage-svg{ width:100%; height:auto; max-height:34mm; flex:0 0 auto; }
     .print-cell .print-memo{ font-size:8.5px; color:#333; flex:0 0 auto; }
     .print-cell .print-countnotes{ font-size:7.5px; color:#555; display:grid; grid-template-columns:1fr 1fr; gap:1mm; flex:1 1 auto; overflow:hidden; }
+    table.print-note-table{ width:100%; border-collapse:collapse; font-size:9px; }
+    table.print-note-table th, table.print-note-table td{ border:1px solid #999; padding:2mm 1.5mm; text-align:left; word-break:break-word; }
+    table.print-note-table thead{ display:table-header-group; }
+    table.print-note-table tr{ page-break-inside:avoid; }
   }
 
   .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
@@ -522,6 +550,7 @@
   }
 
   var footerScrollLeft = 0;
+  var noteScrollTop = 0;
   var ui = {
     screen: 'home', sidebarOpen:false, sidebarTab:'placement',
     selectedIds:[], isReadOnly:false, saveStatus:'idle', dirty:false,
@@ -530,7 +559,8 @@
     wizardOpen:false, wizardAudioSrc:'file', wizardFileStaged:null, ytEmbedBlocked:false,
     wizardTitle:'', wizardCount:8, wizardYtUrl:'',
     undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null, markEnd:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null,
-    contactPickOpen:false, contactPickIds:[]
+    contactPickOpen:false, contactPickIds:[],
+    noteOpen:false
   };
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
@@ -1210,6 +1240,8 @@
 
     var prevFooter = document.querySelector('.footer-strip');
     if(prevFooter) footerScrollLeft = prevFooter.scrollLeft;
+    var prevNoteScroll = document.querySelector('.note-scroll');
+    if(prevNoteScroll) noteScrollTop = prevNoteScroll.scrollTop;
 
     root.innerHTML =
       '<div class="editor-shell">' +
@@ -1225,6 +1257,7 @@
       '</div>' +
       (ui.boardPopover ? renderBoardPopover() : '') +
       (ui.contactPickOpen ? renderContactSheetPicker() : '') +
+      (ui.noteOpen ? renderNoteOverlay() : '') +
       (ui.present ? renderPresentOverlay() : '');
 
     wireEvents();
@@ -1234,6 +1267,8 @@
     observeStagePanelResize();
     var newFooter = document.querySelector('.footer-strip');
     if(newFooter) newFooter.scrollLeft = footerScrollLeft;
+    var newNoteScroll = document.querySelector('.note-scroll');
+    if(newNoteScroll) newNoteScroll.scrollTop = noteScrollTop;
     if(state.audio.sourceType==='youtube' && state.audio.youtubeUrl && !ui.ytEmbedBlocked && !ui.present){
       loadYoutubeVideo(state.audio.youtubeUrl);
     }
@@ -1529,6 +1564,7 @@
         '<button class="btn small" id="exportBtn">エクスポート ▾</button>' +
         exportMenu +
       '</div>' +
+      '<button class="btn small" id="noteOpenBtn">ノート</button>' +
       '<button class="btn small'+(ui.sidebarOpen?' on':'')+'" id="menuTabBtn">メニュー</button>' +
       '<button class="btn small primary" id="saveBtn" type="button" '+(ui.isReadOnly?'disabled':'')+'>'+((hasArtifactApi||cfDb)?'保存して共有':'保存')+'</button>' +
     '</header>';
@@ -1960,6 +1996,60 @@
     '</div>';
   }
 
+  function renderNoteOverlay(){
+    var rows = state.scenes.map(function(sc, i){
+      var cn = sc.countNotes || {};
+      var countCells = [];
+      for(var c=1;c<=8;c++){
+        countCells.push('<td class="note-count"><input type="text" data-act="note-count" data-scene-id="'+sc.id+'" data-c="'+c+'" value="'+escapeHtml(cn[c]||'')+'"></td>');
+      }
+      return '<tr>' +
+        '<td class="note-seq">'+(i+1)+'</td>' +
+        '<td class="note-name"><input type="text" data-act="note-scene-name" data-scene-id="'+sc.id+'" value="'+escapeHtml(sc.name||'')+'"></td>' +
+        countCells.join('') +
+        '<td class="note-memo"><textarea data-act="note-scene-memo" data-scene-id="'+sc.id+'">'+escapeHtml(sc.note||'')+'</textarea></td>' +
+      '</tr>';
+    }).join('');
+    var countHeaders = [];
+    for(var c=1;c<=8;c++){ countHeaders.push('<th>'+c+'</th>'); }
+    return '<div class="note-overlay" role="dialog" aria-modal="true">' +
+      '<div class="note-top">' +
+        '<button class="btn ghost icon" id="noteCloseBtn">✕ 閉じる</button>' +
+        '<h2>ノート</h2>' +
+        '<div class="header-spacer"></div>' +
+        '<button class="btn small" id="notePrintBtn">🖨 印刷</button>' +
+      '</div>' +
+      '<div class="note-scroll">' +
+        '<table class="note-table">' +
+          '<colgroup>' +
+            '<col style="width:36px;">' +
+            '<col style="width:120px;">' +
+            Array(8).fill('<col style="width:100px;">').join('') +
+            '<col>' +
+          '</colgroup>' +
+          '<thead><tr><th>#</th><th>シーン名</th>'+countHeaders.join('')+'<th>シーンメモ</th></tr></thead>' +
+          '<tbody>'+rows+'</tbody>' +
+        '</table>' +
+      '</div>' +
+    '</div>';
+  }
+  function printNote(){
+    var rows = state.scenes.map(function(sc, i){
+      var cn = sc.countNotes || {};
+      var countCells = [];
+      for(var c=1;c<=8;c++){ countCells.push('<td>'+escapeHtml(cn[c]||'')+'</td>'); }
+      return '<tr><td>'+(i+1)+'</td><td>'+escapeHtml(sc.name||'無題')+'</td>'+countCells.join('')+'<td>'+escapeHtml(sc.note||'')+'</td></tr>';
+    }).join('');
+    var countHeaders = [];
+    for(var c=1;c<=8;c++){ countHeaders.push('<th>'+c+'</th>'); }
+    PRINT_AREA.innerHTML =
+      '<table class="print-note-table">' +
+        '<thead><tr><th>#</th><th>シーン名</th>'+countHeaders.join('')+'<th>シーンメモ</th></tr></thead>' +
+        '<tbody>'+rows+'</tbody>' +
+      '</table>';
+    window.print();
+  }
+
   /* ================= export ================= */
   function resolveSvgColors(svgStr){
     var cs = getComputedStyle(document.documentElement);
@@ -2145,6 +2235,29 @@
     });
     on('saveBtn','click', handleSave);
     on('menuTabBtn','click', function(){ ui.sidebarOpen=!ui.sidebarOpen; render(); });
+    on('noteOpenBtn','click', function(){ ui.noteOpen=true; render(); });
+    on('noteCloseBtn','click', function(){ ui.noteOpen=false; render(); });
+    on('notePrintBtn','click', printNote);
+    onAll('[data-act="note-scene-name"]','change', function(){
+      pushHistory();
+      var sc = findScene(this.getAttribute('data-scene-id'));
+      sc.name = this.value;
+      markDirty(); render();
+    });
+    onAll('[data-act="note-count"]','change', function(){
+      pushHistory();
+      var sc = findScene(this.getAttribute('data-scene-id'));
+      var c = this.getAttribute('data-c');
+      sc.countNotes = sc.countNotes || {};
+      sc.countNotes[c] = this.value;
+      markDirty(); render();
+    });
+    onAll('[data-act="note-scene-memo"]','change', function(){
+      pushHistory();
+      var sc = findScene(this.getAttribute('data-scene-id'));
+      sc.note = this.value;
+      markDirty(); render();
+    });
 
     on('exportBtn','click', function(e){ e.stopPropagation(); ui.exportMenuOpen=!ui.exportMenuOpen; render(); });
     if(ui.exportMenuOpen){
