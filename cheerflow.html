@@ -838,6 +838,7 @@
     /* sanitizeRichText()と同じ理由でDOMParserを使う（div.innerHTML=だとimg onerror等が
        検査前に発火し得る）。ここはテキスト抽出用途なので許可タグの概念は不要。 */
     var doc = new DOMParser().parseFromString(String(html||''), 'text/html');
+    Array.prototype.forEach.call(doc.body.querySelectorAll('script,style'), function(el){ el.remove(); });
     return doc.body.textContent || '';
   }
   function clampPct(v){ return Math.max(2, Math.min(98, v)); }
