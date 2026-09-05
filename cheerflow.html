@@ -2356,7 +2356,12 @@
         var el = node && node.nodeType===3 ? node.parentElement : node;
         var baseSize = (el ? parseFloat(getComputedStyle(el).fontSize) : 14) || 14;
         var newSize = Math.max(10, Math.min(32, Math.round(baseSize+delta)));
+        /* styleWithCSSがonだとfontSizeコマンドはfont[size]タグを作らずCSSキーワード(xxx-large等)を
+           直接付与してしまい、px単位での正確な段階調整ができない。一時的にoffにしてレガシーな
+           <font size="7">を確実に生成させ、それをpx指定のstyleに置き換えてから元に戻す。 */
+        document.execCommand('styleWithCSS', false, false);
         document.execCommand('fontSize', false, '7');
+        document.execCommand('styleWithCSS', false, true);
         Array.prototype.forEach.call(activeCell.querySelectorAll('font[size="7"]'), function(f){
           f.removeAttribute('size');
           f.style.fontSize = newSize+'px';
