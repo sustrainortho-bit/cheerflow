@@ -2355,7 +2355,17 @@
         if(!activeCell) return;
         var sel = window.getSelection();
         if(!sel.rangeCount || sel.isCollapsed) return;
-        var node = sel.anchorNode;
+        /* anchorNodeは選択全体を囲む要素(例: selectNodeContentsした外側のcontenteditable div)を
+           指すことがあり、その場合は常にセルの基準フォントサイズを読んでしまい多段階の
+           拡大縮小が積み上がらない。Rangeの開始位置から実際のテキストノードまで辿って
+           現在選択されているテキスト自身のサイズを読み取る。 */
+        var range = sel.getRangeAt(0);
+        var node = range.startContainer;
+        if(node.nodeType!==3){
+          var child = node.childNodes[range.startOffset] || node.childNodes[range.startOffset-1] || node.firstChild;
+          while(child && child.nodeType!==3 && child.firstChild) child = child.firstChild;
+          node = child || node;
+        }
         var el = node && node.nodeType===3 ? node.parentElement : node;
         var baseSize = (el ? parseFloat(getComputedStyle(el).fontSize) : 14) || 14;
         var newSize = Math.max(10, Math.min(32, Math.round(baseSize+delta)));
