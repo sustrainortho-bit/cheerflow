@@ -368,8 +368,15 @@
   #printArea{ display:none; }
   @media print{
     @page{ size:A4 portrait; margin:8mm; }
+    /* アプリ全体はダークテーマ(bodyの背景が暗色)のため、印刷時にそれがそのまま
+       用紙の背景色として出てしまう。印刷領域は常に白背景に固定する。 */
+    html, body{ background:#fff !important; }
+    /* html,bodyの通常時のoverflow:hidden（iPadのバウンススクロール防止用）が印刷時にも
+       効いてしまい、1ページ分の高さでコンテンツをクリップして2ページ目以降が
+       出力されない不具合の原因になっていた。印刷時はoverflow/heightの制約を解除する。 */
+    html, body{ overflow:visible !important; height:auto !important; }
     body > *:not(#printArea){ display:none !important; }
-    #printArea{ display:block !important; }
+    #printArea{ display:block !important; background:#fff !important; color:#111; }
     .print-page{
       display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(4,1fr); gap:6mm;
       width:100%; height:277mm; page-break-after:always; overflow:hidden;
@@ -2359,10 +2366,37 @@
       function preserveFocus(e){ e.preventDefault(); }
       Array.prototype.forEach.call(toolbar.querySelectorAll('button'), function(b){
         b.addEventListener('mousedown', preserveFocus);
+        b.addEventListener('touchstart', preserveFocus, {passive:false});
       });
-      on('noteBoldBtn','click', function(){ document.execCommand('bold'); });
-      on('noteUnderlineBtn','click', function(){ document.execCommand('underline'); });
+      /* iOS Safariはネイティブのテキスト選択（選択ハンドル）を持っており、選択範囲外を
+         タップすると、こちら側のpreventDefault()とは無関係にOS側で選択が解除されてしまう
+         ことがある。これが起きると太字/下線/文字色ボタンを押した時には選択が空になっており、
+         execCommandが「次に入力する文字の書式」としてカーソル位置に適用されるだけで、
+         既に書かれていた（選択していたはずの）文字には反映されない。
+         そこでselectionchangeで「リッチセル内で選択範囲が非collapsedだった直近の状態」を
+         保持しておき、書式ボタンを押した瞬間に必ずその選択とフォーカスを明示的に復元してから
+         execCommandを呼ぶようにする。 */
+      var savedRange = null, savedCell = null;
+      document.addEventListener('selectionchange', function(){
+        var sel = window.getSelection();
+        if(!sel.rangeCount || sel.isCollapsed) return;
+        var range = sel.getRangeAt(0);
+        var container = range.commonAncestorContainer;
+        var el = container.nodeType===3 ? container.parentElement : container;
+        var cell = el && el.closest ? el.closest('.rich-cell') : null;
+        if(cell){ savedRange = range.cloneRange(); savedCell = cell; }
+      });
+      function restoreSelection(){
+        if(!savedRange || !savedCell) return;
+        if(document.activeElement !== savedCell) savedCell.focus();
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+      }
+      on('noteBoldBtn','click', function(){ restoreSelection(); document.execCommand('bold'); });
+      on('noteUnderlineBtn','click', function(){ restoreSelection(); document.execCommand('underline'); });
       function stepFontSize(delta){
+        restoreSelection();
         var activeCell = activeRichCell();
         if(!activeCell) return;
         var sel = window.getSelection();
@@ -2400,6 +2434,7 @@
         pop.hidden = !pop.hidden;
       });
       onAll('.note-color-swatch','click', function(){
+        restoreSelection();
         var hex = this.getAttribute('data-color');
         document.execCommand('foreColor', false, hex);
         ui.noteLastColor = hex;
