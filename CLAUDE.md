@@ -38,7 +38,9 @@ cheerflow.html   # アプリ本体（これ1ファイルで完結。ビルド工
 3. ✅ **印刷時に背景色が黒いまま**：`@media print`内に`html, body{ background:#fff !important; }`を追加して修正
 4. ✅ **印刷プレビューが1ページ目しか出ない**：根本原因判明。`html,body{ overflow:hidden; height:100%; }`（iPadのバウンススクロール防止用に以前追加したもの）が`@media print`にもスコープなく適用され続けており、印刷コンテンツを1ページ分の高さでクリップしていたと判明。`@media print`内で`overflow:visible !important; height:auto !important;`に上書きして解消
 
-**副産物の回帰バグとその修正（2番の対策時に混入・オーナーの実機報告で発覚）**：2番の対策として、全ツールバーボタンに`mousedown`だけでなく`touchstart`にも`preventDefault()`を追加していたが、**これが原因で実機ではボタンのclickイベント自体が一切発火しなくなっていた**（多くのモバイルブラウザは`touchstart`でpreventDefaultされると、後続の合成`click`イベントを抑止する）。オーナー報告：「カラーパレットは選択しても表示されなくなった／他の機能もボタンを押した感触（見た目の反応）はあるが文字には反映されない」＝ボタンのCSS的な押下エフェクトは起きるがJSのclickハンドラが実行されていない、という典型的な症状だった。`touchstart`への登録を削除し、`mousedown`のpreventDefault（clickの発火を妨げない）とselectionchange経由の`restoreSelection()`だけに戻して解消。Browserツールでのクリックベースの検証では全機能（色パレット開閉・太字・下線・文字色・文字サイズ・保存後の反映）を再確認済みだが、**iOS Safari実機での動作は次回オーナーに確認してもらう必要がある**（今回のような「touchstartのpreventDefaultがclickを殺す」系の問題はBrowserツールのクリックシミュレーションでは再現できないため、要注意）
+**副産物の回帰バグとその修正（2番の対策時に混入・オーナーの実機報告で発覚）**：2番の対策として、全ツールバーボタンに`mousedown`だけでなく`touchstart`にも`preventDefault()`を追加していたが、**これが原因で実機ではボタンのclickイベント自体が一切発火しなくなっていた**（多くのモバイルブラウザは`touchstart`でpreventDefaultされると、後続の合成`click`イベントを抑止する）。オーナー報告：「カラーパレットは選択しても表示されなくなった／他の機能もボタンを押した感触（見た目の反応）はあるが文字には反映されない」＝ボタンのCSS的な押下エフェクトは起きるがJSのclickハンドラが実行されていない、という典型的な症状だった。`touchstart`への登録を削除し、`mousedown`のpreventDefault（clickの発火を妨げない）とselectionchange経由の`restoreSelection()`だけに戻して解消。
+
+**さらなる追加修正（2026-09-04その後）**：上記のtouchstart回帰を直した後、オーナーの実機再確認で「カラーパレットの開閉は直ったが、太字・下線だけ依然として反映されない」と判明した（文字色・文字サイズは反映される）。これは`document.execCommand('bold')`/`('underline')`のトグル判定にWebKit（iOS Safari）側の既知の相性問題がある可能性が高いと判断し、**execCommandに頼らず選択範囲(Range)を`<b>`/`<u>`要素で直接ラップする自前実装に置き換えた**（`range.surroundContents()`が使えない複雑な選択の場合は`extractContents()`+`insertNode()`にフォールバック）。文字色・文字サイズはexecCommand経由のままで問題なかったため変更していない。Browserツールでのクリックベース検証では太字・下線単体、および文字色・文字サイズとの組み合わせ、保存後の再描画まですべて正しく反映されることを確認済み。**次回はこの状態でオーナーに実機の太字・下線を再確認してもらうこと**（execCommand関連の問題は実機のWebKit固有の挙動に依存するため、Browserツールでは真の意味での再現・保証ができない点に注意）
 
 ## 完了：ノートの白背景固定・書式設定ツールバー追加（2026-09-04）
 
