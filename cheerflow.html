@@ -2363,10 +2363,16 @@
         var el = document.activeElement;
         return (el && el.classList && el.classList.contains('rich-cell')) ? el : null;
       }
+      /* mousedownのpreventDefaultはボタン押下時にcontenteditableがフォーカスを失うのを防ぐ
+         （clickイベント自体は引き続き発火する）。一方touchstartでpreventDefaultすると、
+         実機（iOS Safari）ではタップ後に本来発火するはずのclickイベントの合成そのものが
+         抑止されてしまい、ボタンのクリックハンドラが一切実行されなくなる不具合を引き起こした
+         （太字/下線/文字色/カラーパレット開閉のすべてが無反応になっていた）。
+         そのためtouchstartへの登録は行わない。iOS選択解除への対策は下のselectionchange経由の
+         restoreSelection()で行う。 */
       function preserveFocus(e){ e.preventDefault(); }
       Array.prototype.forEach.call(toolbar.querySelectorAll('button'), function(b){
         b.addEventListener('mousedown', preserveFocus);
-        b.addEventListener('touchstart', preserveFocus, {passive:false});
       });
       /* iOS Safariはネイティブのテキスト選択（選択ハンドル）を持っており、選択範囲外を
          タップすると、こちら側のpreventDefault()とは無関係にOS側で選択が解除されてしまう
