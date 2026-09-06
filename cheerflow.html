@@ -328,6 +328,7 @@
   .note-scroll{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; border:1px solid #ccc; border-radius:10px; background:#ffffff; }
   table.note-table{ width:100%; table-layout:fixed; border-collapse:collapse; }
   table.note-table th, table.note-table td{ border:1px solid #ddd; padding:0; }
+  table.note-table td.note-color-strip{ border-left:none; border-top:none; border-bottom:none; padding:0; }
   table.note-table thead th{
     position:sticky; top:0; z-index:1; font-size:11px; color:#666; font-weight:600;
     padding:6px 4px; background:#f2f2f2; text-align:center;
@@ -2081,11 +2082,14 @@
   function renderNoteOverlay(){
     var rows = state.scenes.map(function(sc, i){
       var cn = sc.countNotes || {};
+      var sect = SECTION_DEFS[sc.section] || SECTION_DEFS.transition;
+      var sceneColor = sc.color || sect.color;
       var countCells = [];
       for(var c=1;c<=8;c++){
         countCells.push('<td class="note-count"><div class="rich-cell" contenteditable="true" data-act="note-count" data-scene-id="'+sc.id+'" data-c="'+c+'">'+sanitizeRichText(cn[c]||'')+'</div></td>');
       }
       return '<tr>' +
+        '<td class="note-color-strip" style="background:'+escapeHtml(sceneColor)+';" title="'+escapeHtml(sect.label)+'"></td>' +
         '<td class="note-seq">'+(i+1)+'</td>' +
         '<td class="note-name"><input type="text" data-act="note-scene-name" data-scene-id="'+sc.id+'" value="'+escapeHtml(sc.name||'')+'"></td>' +
         countCells.join('') +
@@ -2108,12 +2112,13 @@
       '<div class="note-scroll">' +
         '<table class="note-table">' +
           '<colgroup>' +
+            '<col style="width:8px;">' +
             '<col style="width:36px;">' +
             '<col style="width:120px;">' +
             Array(8).fill('<col style="width:100px;">').join('') +
             '<col>' +
           '</colgroup>' +
-          '<thead><tr><th>#</th><th>シーン名</th>'+countHeaders.join('')+'<th>シーンメモ</th></tr></thead>' +
+          '<thead><tr><th></th><th>#</th><th>シーン名</th>'+countHeaders.join('')+'<th>シーンメモ</th></tr></thead>' +
           '<tbody>'+rows+'</tbody>' +
         '</table>' +
       '</div>' +
@@ -2133,15 +2138,17 @@
   function printNote(){
     var rows = state.scenes.map(function(sc, i){
       var cn = sc.countNotes || {};
+      var sect = SECTION_DEFS[sc.section] || SECTION_DEFS.transition;
+      var sceneColor = sc.color || sect.color;
       var countCells = [];
       for(var c=1;c<=8;c++){ countCells.push('<td>'+escapeHtml(stripHtml(cn[c]||''))+'</td>'); }
-      return '<tr><td>'+(i+1)+'</td><td>'+escapeHtml(sc.name||'無題')+'</td>'+countCells.join('')+'<td>'+escapeHtml(stripHtml(sc.note||''))+'</td></tr>';
+      return '<tr><td style="background:'+escapeHtml(sceneColor)+';padding:0;"></td><td>'+(i+1)+'</td><td>'+escapeHtml(sc.name||'無題')+'</td>'+countCells.join('')+'<td>'+escapeHtml(stripHtml(sc.note||''))+'</td></tr>';
     }).join('');
     var countHeaders = [];
     for(var c=1;c<=8;c++){ countHeaders.push('<th>'+c+'</th>'); }
     PRINT_AREA.innerHTML =
       '<table class="print-note-table">' +
-        '<thead><tr><th>#</th><th>シーン名</th>'+countHeaders.join('')+'<th>シーンメモ</th></tr></thead>' +
+        '<thead><tr><th></th><th>#</th><th>シーン名</th>'+countHeaders.join('')+'<th>シーンメモ</th></tr></thead>' +
         '<tbody>'+rows+'</tbody>' +
       '</table>';
     window.print();
