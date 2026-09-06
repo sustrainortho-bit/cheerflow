@@ -2399,8 +2399,32 @@
         sel.removeAllRanges();
         sel.addRange(savedRange);
       }
-      on('noteBoldBtn','click', function(){ restoreSelection(); document.execCommand('bold'); });
-      on('noteUnderlineBtn','click', function(){ restoreSelection(); document.execCommand('underline'); });
+      /* execCommand('bold')/('underline')は実機のiOS Safari(WebKit)では選択範囲があっても
+         見た目に反映されないことが報告された（文字色・文字サイズは同じexecCommand経由でも
+         問題なく動く）。WebKit側のbold/underlineのトグル判定に絡む既知の相性問題の可能性が
+         あるため、execCommandに頼らずRangeを直接ラップする自前実装に置き換える。 */
+      function wrapSelectionWithTag(tagName){
+        restoreSelection();
+        var sel = window.getSelection();
+        if(!sel.rangeCount || sel.isCollapsed) return;
+        var range = sel.getRangeAt(0);
+        var wrapper = document.createElement(tagName);
+        try{
+          range.surroundContents(wrapper);
+        }catch(e){
+          var contents = range.extractContents();
+          wrapper.appendChild(contents);
+          range.insertNode(wrapper);
+        }
+        var newRange = document.createRange();
+        newRange.selectNodeContents(wrapper);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+        savedRange = newRange.cloneRange();
+        savedCell = activeRichCell() || savedCell;
+      }
+      on('noteBoldBtn','click', function(){ wrapSelectionWithTag('b'); });
+      on('noteUnderlineBtn','click', function(){ wrapSelectionWithTag('u'); });
       function stepFontSize(delta){
         restoreSelection();
         var activeCell = activeRichCell();
