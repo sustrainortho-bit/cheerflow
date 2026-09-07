@@ -92,6 +92,11 @@
   .home-card h2{ margin:0; font-size:18px; }
   .home-card p{ margin:0; font-size:12px; color:var(--text-muted); font-family:'Manrope'; text-transform:none; letter-spacing:0; }
   .home-card.primary{ background:var(--accent-soft); border-color:var(--accent); }
+  .home-tutorial-link{
+    background:none; border:none; color:var(--text-muted); font-size:13px; cursor:pointer; text-decoration:underline;
+    text-underline-offset:3px; padding:4px 8px;
+  }
+  .home-tutorial-link:hover{ color:var(--text); }
   .project-list{ display:flex; flex-direction:column; gap:8px; width:100%; margin-top:12px; }
   .project-list-row{ display:flex; align-items:stretch; gap:6px; }
   .project-list-open{
@@ -367,6 +372,31 @@
   .note-color-popover[hidden]{ display:none; }
   .note-color-swatch{ width:22px; height:22px; border-radius:50%; border:1px solid rgba(0,0,0,.2); cursor:pointer; padding:0; }
 
+  /* ---------- tutorial overlay ---------- */
+  #tutorialLayer{ position:fixed; inset:0; z-index:500; pointer-events:none; }
+  .tutorial-ring{
+    position:fixed; border:3px solid var(--accent); border-radius:10px; pointer-events:none;
+    box-shadow:0 0 0 4000px rgba(0,0,0,.5), 0 0 14px var(--accent);
+    animation:tutorialPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes tutorialPulse{
+    0%,100%{ box-shadow:0 0 0 4000px rgba(0,0,0,.5), 0 0 8px var(--accent); }
+    50%{ box-shadow:0 0 0 4000px rgba(0,0,0,.5), 0 0 22px var(--accent); }
+  }
+  .tutorial-panel{
+    position:fixed; left:50%; bottom:20px; transform:translateX(-50%); width:min(92vw,420px);
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow);
+    padding:14px 16px; pointer-events:auto; z-index:501;
+  }
+  .tutorial-panel-head{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+  .tutorial-panel-head button{ background:none; border:none; color:var(--text-muted); font-size:15px; cursor:pointer; line-height:1; }
+  .tutorial-panel h3{ margin:0 0 6px; font-size:15px; color:var(--text); }
+  .tutorial-panel p{ margin:0 0 12px; font-size:13px; line-height:1.6; color:var(--text); }
+  .tutorial-panel-actions{ display:flex; justify-content:space-between; gap:8px; }
+  .tutorial-panel-actions button{ flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:13px; cursor:pointer; }
+  .tutorial-panel-actions button.primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tutorial-panel-actions button:disabled{ opacity:.4; cursor:default; }
+
   /* ---------- print ---------- */
   #printArea{ display:none; }
   @media print{
@@ -594,8 +624,20 @@
     wizardTitle:'', wizardCount:8, wizardYtUrl:'',
     undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null, markEnd:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null,
     contactPickOpen:false, contactPickIds:[],
-    noteOpen:false, noteToolbarPos:null, noteLastColor:null
+    noteOpen:false, noteToolbarPos:null, noteLastColor:null,
+    tutorial:null
   };
+
+  var TUTORIAL_STEPS = [
+    { title:'① プロジェクトを作成', text:'プロジェクト名・メンバー人数・音源を決めて、新規プロジェクトを作成しましょう。「新規プロジェクトを作成」を押してください。', selector:'#homeNewBtn' },
+    { title:'② 8カウントでシーンを作成', text:'音源のBPMを確認し、1カウント目と終わりの位置をマークして、8カウント区切りでシーンを自動生成しましょう。音源パネルの「8カウントで区切る…」から行えます。', selector:'#countSplitOpenBtn' },
+    { title:'③ 曲の展開ごとに色分け', text:'Aメロ・サビなど曲が切り替わる部分のシーンで色を変えて目印にしましょう。メニュー→シーンタブの「色アイコン」で変更できます。', selector:'#sceneColor' },
+    { title:'④ スタンツとシーン名', text:'曲全体でどのスタンツを組み込むか決め、該当するシーンにスタンツを中心にしたシーン名を付けていきましょう。シーンタブの「シーン名」欄に入力します。', selector:'#sceneName' },
+    { title:'⑤ 名簿とフォーメーション', text:'名簿タブでメンバーの名前を入力し、配置タブでシーンごとにフォーメーションを組みましょう。スタンツはコマを複数選んで「スタンツ隊列」、タンブリングはコマを長押しして技を選択します。', selector:'.side-tab-btn[data-side-tab="roster"]' },
+    { title:'⑥ カウント別メモ', text:'各シーンのカウントごとに動きや注意点を書き込みましょう。配置タブの「カウント別メモ」か、ノート機能を使うと全シーンを見渡しながら書き込めます。', selector:'#noteOpenBtn' },
+    { title:'⑦ 通しで確認', text:'「プレビュー」で音源に合わせて通しで確認しましょう。', selector:'#previewBtn' },
+    { title:'⑧ 保存して共有', text:'問題がなければ「保存して共有」でクラウドに保存し、共有リンクを発行しましょう。お疲れ様でした、これでチュートリアルは終わりです！', selector:'#saveBtn' }
+  ];
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
   (function(){
@@ -1314,6 +1356,45 @@
   var root = document.getElementById('root');
 
   function render(){
+    renderInner();
+    renderTutorialLayer();
+  }
+  function renderTutorialLayer(){
+    var old = document.getElementById('tutorialLayer');
+    if(old) old.remove();
+    if(!ui.tutorial) return;
+    var idx = ui.tutorial.step;
+    var step = TUTORIAL_STEPS[idx];
+    if(!step){ ui.tutorial = null; return; }
+    var ringHtml = '';
+    var target = document.querySelector(step.selector);
+    if(target){
+      var r = target.getBoundingClientRect();
+      var pad = 6;
+      ringHtml = '<div class="tutorial-ring" style="left:'+(r.left-pad)+'px;top:'+(r.top-pad)+'px;width:'+(r.width+pad*2)+'px;height:'+(r.height+pad*2)+'px;"></div>';
+    }
+    var layer = document.createElement('div');
+    layer.id = 'tutorialLayer';
+    layer.innerHTML =
+      ringHtml +
+      '<div class="tutorial-panel">' +
+        '<div class="tutorial-panel-head"><b>'+(idx+1)+' / '+TUTORIAL_STEPS.length+'</b><button type="button" id="tutorialCloseBtn" title="終了">✕</button></div>' +
+        '<h3>'+escapeHtml(step.title)+'</h3>' +
+        '<p>'+escapeHtml(step.text)+'</p>' +
+        '<div class="tutorial-panel-actions">' +
+          '<button type="button" id="tutorialPrevBtn" '+(idx===0?'disabled':'')+'>◀ 前へ</button>' +
+          (idx===TUTORIAL_STEPS.length-1 ?
+            '<button type="button" id="tutorialFinishBtn" class="primary">終了する</button>' :
+            '<button type="button" id="tutorialNextBtn" class="primary">次へ ▶</button>') +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(layer);
+    on('tutorialCloseBtn','click', function(){ ui.tutorial=null; render(); });
+    on('tutorialPrevBtn','click', function(){ ui.tutorial.step=Math.max(0,idx-1); render(); });
+    on('tutorialNextBtn','click', function(){ ui.tutorial.step=idx+1; render(); });
+    on('tutorialFinishBtn','click', function(){ ui.tutorial=null; render(); });
+  }
+  function renderInner(){
     scheduleLocalSave();
     if(ui.screen==='projectList'){
       root.innerHTML = renderProjectListScreen();
@@ -1449,6 +1530,7 @@
           '<p>音源と構成人数を入力して開始します</p>' +
         '</button>' +
       '</div>' +
+      '<button class="home-tutorial-link" id="homeTutorialBtn">📖 チュートリアルを見る</button>' +
     '</div>';
   }
 
@@ -1537,6 +1619,7 @@
   }
 
   function wireHomeEvents(){
+    on('homeTutorialBtn','click', function(){ ui.tutorial = { step:0 }; render(); });
     var editBtn = document.getElementById('homeEditBtn');
     if(editBtn) editBtn.addEventListener('click', function(){
       if(state.hasProject){
