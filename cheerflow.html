@@ -429,6 +429,7 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -625,7 +626,8 @@
     undoStack:[], redoStack:[], tlZoom:60, countSplit:{open:false, bpm:null, markA:null, markEnd:null}, ytAudioOnly:false, boardPopover:null, formationClipboard:null,
     contactPickOpen:false, contactPickIds:[],
     noteOpen:false, noteToolbarPos:null, noteLastColor:null,
-    tutorial:null
+    tutorial:null,
+    shareViewOpen:false, shareViewUrl:'', shareViewAudioStripped:false
   };
 
   var TUTORIAL_STEPS = [
@@ -1429,6 +1431,7 @@
       '</div>' +
       (ui.boardPopover ? renderBoardPopover() : '') +
       (ui.contactPickOpen ? renderContactSheetPicker() : '') +
+      (ui.shareViewOpen ? renderShareViewModal() : '') +
       (ui.noteOpen ? renderNoteOverlay() : '') +
       (ui.present ? renderPresentOverlay() : '');
 
@@ -1713,14 +1716,8 @@
         '<button data-act="exp-json-export">プロジェクトをJSONで書き出す</button>' +
         '<input type="file" id="jsonImportInput" accept="application/json" class="visually-hidden">' +
         '<button data-act="exp-json-import">JSONから読み込む</button>' +
-        (hasArtifactApi ? (
-          '<div class="grp-label">共有</div>' +
-          '<button data-act="exp-share-link">共有リンクをコピー（閲覧用）</button>' +
-          '<button data-act="exp-collab-link">共同編集リンクについて</button>'
-        ) : (cfDb && cloudProjectId ? (
-          '<div class="grp-label">共有</div>' +
-          '<button data-act="exp-share-link">共有リンクをコピー</button>'
-        ) : '')) +
+        '<div class="grp-label">共有</div>' +
+        '<button data-act="exp-share-view-link">共有リンク（閲覧専用）</button>' +
       '</div>'
     ) : '';
     var curIdx = sceneIndex(state.currentSceneId);
@@ -2395,11 +2392,48 @@
     var name = (state.title||'project').replace(/[\\/:*?"<>|]/g,'_');
     saveViaDownloads(name+'.json', JSON.stringify(state, null, 2));
   }
-  function copyShareLink(){
-    var url = window.location.href;
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(function(){ alert('リンクをコピーしました。'); }, function(){ prompt('このURLをコピーしてください', url); });
-    } else { prompt('このURLをコピーしてください', url); }
+  /* ================= 閲覧専用リンク（サーバー保存なし・状態をURLに直接埋め込む方式） ================= */
+  var VIEW_LINK_MAX_LEN = 8000; /* メッセージアプリ等での共有時に問題が起きにくい実用上の上限 */
+  function buildViewOnlyState(){
+    var copy = JSON.parse(JSON.stringify(state));
+    var audioStripped = false;
+    if(copy.audio && copy.audio.sourceType==='file' && copy.audio.dataUrl){
+      copy.audio.dataUrl = '';
+      audioStripped = true;
+    }
+    return { state:copy, audioStripped:audioStripped };
+  }
+  function generateViewOnlyUrl(){
+    var built = buildViewOnlyState();
+    var compressed = LZString.compressToEncodedURIComponent(JSON.stringify(built.state));
+    var url = location.origin + location.pathname + '#v=' + compressed;
+    return { url:url, audioStripped:built.audioStripped };
+  }
+  function openShareViewLink(){
+    var result = generateViewOnlyUrl();
+    if(result.url.length > VIEW_LINK_MAX_LEN){
+      alert('プロジェクトの内容が多く、この形式のリンクを作成できませんでした（シーン数やメモを減らすと作成できる場合があります）。');
+      return;
+    }
+    ui.shareViewUrl = result.url;
+    ui.shareViewAudioStripped = result.audioStripped;
+    ui.shareViewOpen = true;
+  }
+  function renderShareViewModal(){
+    return '<div class="modal-backdrop" id="shareViewBackdrop">' +
+      '<div class="modal-box" role="dialog" aria-label="共有リンク（閲覧専用）">' +
+        '<h2>共有リンク（閲覧専用）</h2>' +
+        '<p class="empty-hint">このリンクを開いた人は、今の内容を閲覧できます（保存や編集の反映はされません）。'+
+          (ui.shareViewAudioStripped ? '※アップロードした音声ファイルはこのリンクには含まれません（YouTube音源は含まれます）。' : '') +
+        '</p>' +
+        '<textarea id="shareViewUrlText" readonly style="width:100%;min-height:80px;font-size:12px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:9px;">'+escapeHtml(ui.shareViewUrl||'')+'</textarea>' +
+        '<div class="modal-actions">' +
+          '<button class="btn" id="shareViewCloseBtn">閉じる</button>' +
+          (navigator.share ? '<button class="btn" id="shareViewShareBtn">他アプリと共有</button>' : '') +
+          '<button class="btn primary" id="shareViewCopyBtn">コピー</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }
 
   /* ================= events ================= */
@@ -2617,8 +2651,7 @@
         else if(act==='exp-png-contact') exportContactSheetPng();
         else if(act==='exp-png-contact-pick') openContactSheetPicker();
         else if(act==='exp-json-export') exportJson();
-        else if(act==='exp-share-link') copyShareLink();
-        else if(act==='exp-collab-link') alert('共同編集させたい相手には、このページ右上（アーティファクトの共有メニュー）から「編集者として共有」を選んでリンクを送ってください。同じURLでも、共有時の権限設定によって閲覧のみか編集可能かが決まります。');
+        else if(act==='exp-share-view-link') openShareViewLink();
         render();
       });
     });
@@ -2974,6 +3007,25 @@
       if(this.checked){ if(i<0) ui.contactPickIds.push(id); }
       else { if(i>=0) ui.contactPickIds.splice(i,1); }
       render();
+    });
+    on('shareViewCloseBtn','click', function(){ ui.shareViewOpen=false; render(); });
+    var shareViewBackdrop = document.getElementById('shareViewBackdrop');
+    if(shareViewBackdrop) shareViewBackdrop.addEventListener('click', function(e){ if(e.target===shareViewBackdrop){ ui.shareViewOpen=false; render(); } });
+    on('shareViewCopyBtn','click', function(){
+      var url = ui.shareViewUrl;
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(function(){ alert('リンクをコピーしました。'); }, function(){
+          var ta = document.getElementById('shareViewUrlText');
+          if(ta){ ta.select(); }
+        });
+      } else {
+        var ta = document.getElementById('shareViewUrlText');
+        if(ta){ ta.select(); document.execCommand('copy'); alert('リンクをコピーしました。'); }
+      }
+    });
+    on('shareViewShareBtn','click', function(){
+      if(!navigator.share) return;
+      navigator.share({ title: (state.title||'CheerFlow')+' - CheerFlow', url: ui.shareViewUrl }).catch(function(){});
     });
     onAll('[data-act="board-stunt-pick"]','click', function(){
       var sc = currentScene();
@@ -3497,7 +3549,23 @@
     if(state.audio.dataUrl) AUDIO_EL.src = state.audio.dataUrl;
   }
 
-  if(cloudProjectId && cfDb){
+  /* 閲覧専用リンク（#v=<圧縮データ>）：サーバーを介さずURL自体に状態を埋め込む方式。
+     Firestoreの?p=より優先して判定する（自己完結型でネットワーク不要のため）。 */
+  var viewOnlyPayload = (function(){
+    var m = window.location.hash.match(/#v=(.+)/);
+    if(!m) return null;
+    try{
+      var json = window.LZString && LZString.decompressFromEncodedURIComponent(m[1]);
+      return json ? JSON.parse(json) : null;
+    }catch(e){ return null; }
+  })();
+
+  if(viewOnlyPayload){
+    applyLoadedState(viewOnlyPayload);
+    ui.isReadOnly = true;
+    ui.screen = 'editor';
+    render();
+  } else if(cloudProjectId && cfDb){
     root.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted)">読み込み中…</div>';
     cfDb.collection('projects').doc(cloudProjectId).get().then(function(doc){
       if(doc.exists && doc.data() && doc.data().state){
