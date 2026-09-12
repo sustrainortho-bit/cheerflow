@@ -2729,7 +2729,7 @@
           longPressTimer: null
         };
         footerDragState = st;
-        el.setPointerCapture(e.pointerId);
+        try{ el.setPointerCapture(e.pointerId); }catch(err){}
         if(isTouch){
           st.longPressTimer = setTimeout(function(){
             if(footerDragState===st && !st.scrolling){
