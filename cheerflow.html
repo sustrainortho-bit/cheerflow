@@ -2685,6 +2685,7 @@
     });
     (function(){
       var DRAG_THRESHOLD = 8;
+      var LONG_PRESS_MS = 400;
       function computeDropIndex(clientX, draggedEl){
         var strip = document.querySelector('.footer-strip');
         var cards = Array.prototype.filter.call(strip.querySelectorAll('.thumb-card'), function(c){ return c!==draggedEl; });
@@ -2709,20 +2710,54 @@
         var ind = document.getElementById('thumbDropIndicator');
         if(ind && ind.parentElement) ind.parentElement.removeChild(ind);
       }
+      /* タッチ操作の場合、.thumb-cardはtouch-action:noneでブラウザの横スクロールを止めているため、
+         すぐにドラッグ判定にしてしまうと指を横に滑らせてカードを流し見すること（スライド）ができなくなる。
+         そこで「長押し（LONG_PRESS_MS）で確定するまでは動かした分だけ手動でstrip.scrollLeftを動かす」
+         方式にし、長押しが成立して初めて並び替えドラッグへ移行する。マウス操作は従来通り
+         わずかな移動（DRAG_THRESHOLD）で即ドラッグ開始する（スライド操作と衝突しないため）。 */
       onAll('.thumb-card','pointerdown', function(e){
         if(e.target.closest('.ctrls')) return;
-        footerDragState = {
-          fromIndex: sceneIndex(this.getAttribute('data-scene-id')),
+        var el = this;
+        var strip = document.querySelector('.footer-strip');
+        var isTouch = e.pointerType==='touch' || e.pointerType==='pen';
+        var st = {
+          fromIndex: sceneIndex(el.getAttribute('data-scene-id')),
           pointerId: e.pointerId, startX: e.clientX, startY: e.clientY,
-          didDrag: false, dropIndex: null, el: this
+          didDrag: false, dropIndex: null, el: el,
+          isTouch: isTouch, longPressArmed: !isTouch, scrolling: false,
+          scrollStartLeft: strip ? strip.scrollLeft : 0,
+          longPressTimer: null
         };
-        this.setPointerCapture(e.pointerId);
+        footerDragState = st;
+        el.setPointerCapture(e.pointerId);
+        if(isTouch){
+          st.longPressTimer = setTimeout(function(){
+            if(footerDragState===st && !st.scrolling){
+              st.longPressArmed = true;
+              st.didDrag = true;
+              st.el.classList.add('dragging');
+            }
+          }, LONG_PRESS_MS);
+        }
       });
       onAll('.thumb-card','pointermove', function(e){
         var st = footerDragState;
         if(!st || st.pointerId!==e.pointerId) return;
+        var dx = e.clientX-st.startX, dy = e.clientY-st.startY;
+
+        if(st.isTouch && !st.longPressArmed){
+          if(!st.scrolling){
+            if(Math.abs(dx)<DRAG_THRESHOLD && Math.abs(dy)<DRAG_THRESHOLD) return;
+            clearTimeout(st.longPressTimer);
+            st.scrolling = true;
+          }
+          var strip = document.querySelector('.footer-strip');
+          if(strip) strip.scrollLeft = st.scrollStartLeft - dx;
+          return;
+        }
+
         if(!st.didDrag){
-          if(Math.abs(e.clientX-st.startX)<DRAG_THRESHOLD && Math.abs(e.clientY-st.startY)<DRAG_THRESHOLD) return;
+          if(Math.abs(dx)<DRAG_THRESHOLD && Math.abs(dy)<DRAG_THRESHOLD) return;
           st.didDrag = true;
           st.el.classList.add('dragging');
         }
@@ -2733,9 +2768,11 @@
       function finishDrag(e){
         var st = footerDragState;
         if(!st || st.pointerId!==e.pointerId) return;
+        clearTimeout(st.longPressTimer);
         footerDragState = null;
         st.el.classList.remove('dragging');
         removeDropIndicator();
+        if(st.scrolling){ footerJustDragged = true; return; }
         if(!st.didDrag) return;
         footerJustDragged = true;
         if(st.dropIndex!=null && st.dropIndex!==st.fromIndex){
