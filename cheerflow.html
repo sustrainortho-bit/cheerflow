@@ -2990,8 +2990,11 @@
       var n = state.members.length+1;
       var id = uid('m');
       state.members.push({ id:id, name:'新規'+n, part:PART_ORDER[0], color:nextKomaColor(state.members.length) });
-      currentScene().presence[id] = true;
-      currentScene().positions[id] = { x:50, y:50 };
+      /* hc-minusが全シーンから削除するのに対応させ、新規メンバーは全シーンに登場させる */
+      state.scenes.forEach(function(s){
+        s.presence[id] = true;
+        s.positions[id] = { x:50, y:50 };
+      });
       markDirty(); render();
     });
     onAll('[data-act="hc-minus"]','click', function(){
