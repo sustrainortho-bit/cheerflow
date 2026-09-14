@@ -300,8 +300,11 @@
   /* ---------- present overlay ---------- */
   .present-overlay{
     position:fixed; inset:0; background:var(--bg); z-index:100; display:flex; flex-direction:column; padding:20px 26px 26px;
+    /* iOS Safariのツールバー開閉でビューポート高さが変わってもボード等が想定外に
+       はみ出さないよう、万一収まりきらない場合は縦スクロールで逃がす（通常時は発生しない）。 */
+    overflow-y:auto;
   }
-  .present-top{ display:flex; align-items:center; gap:12px; }
+  .present-top{ display:flex; align-items:center; gap:12px; flex:0 0 auto; }
   .present-body{ flex:1; display:flex; gap:16px; min-height:0; }
   .present-stage-wrap{ flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:10px 0; }
   .present-stage-wrap .stage-svg{ max-width:100%; max-height:100%; }
@@ -314,13 +317,25 @@
   .present-cn-row b{ color:var(--accent); font-family:'IBM Plex Mono'; min-width:16px; flex:0 0 auto; }
   .present-cn-row span{ color:var(--text); word-break:break-word; }
   @media (max-width:680px){
-    .present-body{ flex-direction:column; }
-    .present-countnotes-side{ flex:0 0 auto; width:auto; max-height:22vh; }
+    .present-overlay{ padding:12px 14px 14px; }
+    .present-body{ flex-direction:column; gap:8px; }
+    .present-countnotes-side{
+      flex:0 0 auto; width:auto; padding:8px 10px;
+      /* vhはiOS Safariでツールバー表示中/非表示中で基準となる高さが変わるため、
+         対応ブラウザではdvh（実際に見えている高さ基準）を優先して使う。 */
+      max-height:20vh; max-height:20dvh;
+    }
+    .present-info{ gap:2px; }
+    .present-info h2{ font-size:18px; }
+    .present-note{ font-size:12px; }
+    .present-controls{ padding-top:2px; gap:8px; }
+    .present-controls .btn{ padding:6px 10px; font-size:12px; }
+    .present-dots{ padding-top:4px; }
   }
-  .present-info{ text-align:center; display:flex; flex-direction:column; gap:4px; }
+  .present-info{ text-align:center; display:flex; flex-direction:column; gap:4px; flex:0 1 auto; }
   .present-info h2{ font-size:24px; margin:0; }
-  .present-controls{ display:flex; align-items:center; justify-content:center; gap:14px; padding-top:6px; }
-  .present-dots{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; padding-top:8px; }
+  .present-controls{ display:flex; align-items:center; justify-content:center; gap:14px; padding-top:6px; flex:0 0 auto; }
+  .present-dots{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; padding-top:8px; flex:0 0 auto; }
   .present-dots button{ width:9px; height:9px; padding:0; border-radius:50%; border:none; background:var(--border); cursor:pointer; }
   .present-dots button.on{ background:var(--accent); }
   .present-note{ color:var(--text-muted); font-size:13px; max-width:560px; margin:0 auto; }
@@ -419,7 +434,7 @@
     .print-cell .stage-svg{ width:100%; height:auto; max-height:34mm; flex:0 0 auto; }
     .print-cell .print-memo{ font-size:8.5px; color:#333; flex:0 0 auto; }
     .print-cell .print-countnotes{ font-size:7.5px; color:#555; display:grid; grid-template-columns:1fr 1fr; gap:1mm; flex:1 1 auto; overflow:hidden; }
-    table.print-note-table{ width:100%; border-collapse:collapse; font-size:9px; }
+    table.print-note-table{ width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed; }
     table.print-note-table th, table.print-note-table td{ border:1px solid #999; padding:2mm 1.5mm; text-align:left; word-break:break-word; }
     table.print-note-table thead{ display:table-header-group; }
     table.print-note-table tr{ page-break-inside:avoid; }
@@ -614,6 +629,7 @@
 
   var footerScrollLeft = 0;
   var noteScrollTop = 0;
+  var contactPickScrollTop = 0;
   var footerDragState = null; /* シーンカードのドラッグ並び替え中の状態(renderをまたいで保持) */
   var footerJustDragged = false; /* ドラッグ直後に発火するclickでシーン選択が誤爆しないようにする */
   var ui = {
@@ -1416,6 +1432,8 @@
     if(prevFooter) footerScrollLeft = prevFooter.scrollLeft;
     var prevNoteScroll = document.querySelector('.note-scroll');
     if(prevNoteScroll) noteScrollTop = prevNoteScroll.scrollTop;
+    var prevContactPick = document.querySelector('.contact-pick-list');
+    if(prevContactPick) contactPickScrollTop = prevContactPick.scrollTop;
 
     root.innerHTML =
       '<div class="editor-shell">' +
@@ -1444,6 +1462,8 @@
     if(newFooter) newFooter.scrollLeft = footerScrollLeft;
     var newNoteScroll = document.querySelector('.note-scroll');
     if(newNoteScroll) newNoteScroll.scrollTop = noteScrollTop;
+    var newContactPick = document.querySelector('.contact-pick-list');
+    if(newContactPick) newContactPick.scrollTop = contactPickScrollTop;
     if(state.audio.sourceType==='youtube' && state.audio.youtubeUrl && !ui.ytEmbedBlocked && !ui.present){
       loadYoutubeVideo(state.audio.youtubeUrl);
     }
@@ -2159,6 +2179,7 @@
         '<p class="present-note">'+escapeHtml(stripHtml(sc.note||''))+'</p>' +
       '</div>' +
       '<div class="present-controls">' +
+        '<button class="btn" id="presentRestart" title="最初のシーンに戻って再生します">⏮ 最初から再生</button>' +
         '<button class="btn" id="presentPrev">◀ 前へ</button>' +
         '<button class="btn primary" id="presentPlay">'+(ui.presentPlaying?'❚❚ 一時停止':'▶ 自動再生')+'</button>' +
         '<button class="btn" id="presentNext">次へ ▶</button>' +
@@ -2235,8 +2256,13 @@
     }).join('');
     var countHeaders = [];
     for(var c=1;c<=8;c++){ countHeaders.push('<th>'+c+'</th>'); }
+    /* table-layout:fixedと組み合わせ、カウント1〜8の列幅を内容量に関係なく均等にする */
+    var countColCells = [];
+    for(var c2=1;c2<=8;c2++){ countColCells.push('<col style="width:7.5%;">'); }
+    var colgroup = '<colgroup><col style="width:2%;"><col style="width:4%;"><col style="width:14%;">'+countColCells.join('')+'<col style="width:20%;"></colgroup>';
     PRINT_AREA.innerHTML =
       '<table class="print-note-table">' +
+        colgroup +
         '<thead><tr><th></th><th>#</th><th>シーン名</th>'+countHeaders.join('')+'<th>シーンメモ</th></tr></thead>' +
         '<tbody>'+rows+'</tbody>' +
       '</table>';
@@ -3450,6 +3476,7 @@
   /* ---------------- present ---------------- */
   function wirePresentEvents(){
     on('presentClose','click', stopPresent);
+    on('presentRestart','click', presentRestart);
     on('presentPrev','click', function(){ presentGo(ui.presentIndex-1); });
     on('presentNext','click', function(){ presentGo(ui.presentIndex+1); });
     on('presentPlay','click', togglePresentPlay);
@@ -3530,6 +3557,13 @@
     }
     requestAnimationFrame(step);
   }
+  function startPresentAutoAdvance(){
+    ui.presentTimer = setInterval(function(){
+      var ni = ui.presentIndex+1;
+      if(ni>=state.scenes.length){ ui.presentPlaying=false; clearInterval(ui.presentTimer); render(); return; }
+      presentGo(ni);
+    }, 3500);
+  }
   function togglePresentPlay(){
     if(hasAudioSource()){
       playbackTogglePlay();
@@ -3538,13 +3572,20 @@
       return;
     }
     ui.presentPlaying = !ui.presentPlaying;
-    if(ui.presentPlaying){
-      ui.presentTimer = setInterval(function(){
-        var ni = ui.presentIndex+1;
-        if(ni>=state.scenes.length){ ui.presentPlaying=false; clearInterval(ui.presentTimer); render(); return; }
-        presentGo(ni);
-      }, 3500);
-    } else if(ui.presentTimer){ clearInterval(ui.presentTimer); }
+    if(ui.presentPlaying){ startPresentAutoAdvance(); }
+    else if(ui.presentTimer){ clearInterval(ui.presentTimer); }
+    render();
+  }
+  function presentRestart(){
+    if(ui.presentTimer){ clearInterval(ui.presentTimer); ui.presentTimer=null; }
+    presentGo(0);
+    if(hasAudioSource()){
+      if(playbackIsPaused()) playbackTogglePlay();
+      ui.presentPlaying = true;
+    } else {
+      ui.presentPlaying = true;
+      startPresentAutoAdvance();
+    }
     render();
   }
   function stopPresent(){
