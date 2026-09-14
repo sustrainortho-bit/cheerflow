@@ -2393,7 +2393,10 @@
     saveViaDownloads(name+'.json', JSON.stringify(state, null, 2));
   }
   /* ================= 閲覧専用リンク（サーバー保存なし・状態をURLに直接埋め込む方式） ================= */
-  var VIEW_LINK_MAX_LEN = 8000; /* メッセージアプリ等での共有時に問題が起きにくい実用上の上限 */
+  /* #v=... はURLのハッシュ部分なのでサーバーには送信されず、通信経路上のURL長制限は受けない。
+     制約になるのは主要ブラウザ自体のURL長上限のみ（Firefoxが最も厳しく実用上6万文字強）なので、
+     それより十分余裕を持たせつつ実用的な規模のプロジェクトを通せる値にする。 */
+  var VIEW_LINK_MAX_LEN = 60000;
   function buildViewOnlyState(){
     var copy = JSON.parse(JSON.stringify(state));
     var audioStripped = false;
