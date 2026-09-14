@@ -324,7 +324,11 @@
       /* vhはiOS Safariでツールバー表示中/非表示中で基準となる高さが変わるため、
          対応ブラウザではdvh（実際に見えている高さ基準）を優先して使う。 */
       max-height:20vh; max-height:20dvh;
+      /* 1〜8を縦一列で並べると縦に長くなりがちなので、編集画面サイドバーの
+         カウント別メモ欄と同じ2列グリッドにして必要な縦スペースを半分程度にする。 */
+      display:grid; grid-template-columns:1fr 1fr; gap:2px 12px; align-content:start;
     }
+    .present-countnotes-side h3{ grid-column:1 / -1; }
     .present-info{ gap:2px; }
     .present-info h2{ font-size:18px; }
     .present-note{ font-size:12px; }
@@ -415,7 +419,7 @@
   /* ---------- print ---------- */
   #printArea{ display:none; }
   @media print{
-    @page{ size:A4 portrait; margin:8mm; }
+    @page{ size:A4 portrait; margin:8mm 5mm; }
     /* アプリ全体はダークテーマ(bodyの背景が暗色)のため、印刷時にそれがそのまま
        用紙の背景色として出てしまう。印刷領域は常に白背景に固定する。 */
     html, body{ background:#fff !important; }
@@ -2258,8 +2262,8 @@
     for(var c=1;c<=8;c++){ countHeaders.push('<th>'+c+'</th>'); }
     /* table-layout:fixedと組み合わせ、カウント1〜8の列幅を内容量に関係なく均等にする */
     var countColCells = [];
-    for(var c2=1;c2<=8;c2++){ countColCells.push('<col style="width:7.5%;">'); }
-    var colgroup = '<colgroup><col style="width:2%;"><col style="width:4%;"><col style="width:14%;">'+countColCells.join('')+'<col style="width:20%;"></colgroup>';
+    for(var c2=1;c2<=8;c2++){ countColCells.push('<col style="width:8.75%;">'); }
+    var colgroup = '<colgroup><col style="width:2%;"><col style="width:3%;"><col style="width:10%;">'+countColCells.join('')+'<col style="width:15%;"></colgroup>';
     PRINT_AREA.innerHTML =
       '<table class="print-note-table">' +
         colgroup +
