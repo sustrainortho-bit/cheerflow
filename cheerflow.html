@@ -627,7 +627,7 @@
     contactPickOpen:false, contactPickIds:[],
     noteOpen:false, noteToolbarPos:null, noteLastColor:null,
     tutorial:null,
-    shareViewOpen:false, shareViewUrl:'', shareViewAudioStripped:false
+    shareViewOpen:false, shareViewUrl:'', shareViewAudioStripped:false, shareViewLoading:false
   };
 
   var TUTORIAL_STEPS = [
@@ -2392,10 +2392,14 @@
     var name = (state.title||'project').replace(/[\\/:*?"<>|]/g,'_');
     saveViaDownloads(name+'.json', JSON.stringify(state, null, 2));
   }
-  /* ================= 閲覧専用リンク（サーバー保存なし・状態をURLに直接埋め込む方式） ================= */
-  /* #v=... はURLのハッシュ部分なのでサーバーには送信されず、通信経路上のURL長制限は受けない。
-     制約になるのは主要ブラウザ自体のURL長上限のみ（Firefoxが最も厳しく実用上6万文字強）なので、
-     それより十分余裕を持たせつつ実用的な規模のプロジェクトを通せる値にする。 */
+  /* ================= 閲覧専用リンク ================= */
+  /* 基本方式：Firestore（viewSnapshotsコレクション、一度作成したら書き換え不可）にスナップショットを
+     保存し、"?rv=<ドキュメントID>" という短いURLを発行する。LINE等のメッセージアプリでも問題なく
+     送れる長さになる上、外部の短縮URLサービスにルーティン内容を送らずに済む。
+     Firestoreが使えない場合（読み込み失敗・オフライン等）は、状態をURLハッシュに直接圧縮埋め込みする
+     旧方式（#v=...）にフォールバックする。#v=...はURLのハッシュ部分なのでサーバーには送信されず、
+     通信経路上のURL長制限は受けない。制約になるのは主要ブラウザ自体のURL長上限のみ（Firefoxが最も
+     厳しく実用上6万文字強）なので、それより十分余裕を持たせた値にする。 */
   var VIEW_LINK_MAX_LEN = 60000;
   function buildViewOnlyState(){
     var copy = JSON.parse(JSON.stringify(state));
@@ -2406,23 +2410,60 @@
     }
     return { state:copy, audioStripped:audioStripped };
   }
-  function generateViewOnlyUrl(){
+  function generateViewOnlyHashUrl(){
     var built = buildViewOnlyState();
     var compressed = LZString.compressToEncodedURIComponent(JSON.stringify(built.state));
     var url = location.origin + location.pathname + '#v=' + compressed;
     return { url:url, audioStripped:built.audioStripped };
   }
   function openShareViewLink(){
-    var result = generateViewOnlyUrl();
-    if(result.url.length > VIEW_LINK_MAX_LEN){
-      alert('プロジェクトの内容が多く、この形式のリンクを作成できませんでした（シーン数やメモを減らすと作成できる場合があります）。');
+    if(!cfDb){
+      var fallback = generateViewOnlyHashUrl();
+      if(fallback.url.length > VIEW_LINK_MAX_LEN){
+        alert('プロジェクトの内容が多く、この形式のリンクを作成できませんでした（シーン数やメモを減らすと作成できる場合があります）。');
+        return;
+      }
+      ui.shareViewUrl = fallback.url;
+      ui.shareViewAudioStripped = fallback.audioStripped;
+      ui.shareViewOpen = true;
       return;
     }
-    ui.shareViewUrl = result.url;
-    ui.shareViewAudioStripped = result.audioStripped;
     ui.shareViewOpen = true;
+    ui.shareViewLoading = true;
+    ui.shareViewUrl = '';
+    ui.shareViewAudioStripped = false;
+    var built = buildViewOnlyState();
+    cfDb.collection('viewSnapshots').add({ state:built.state, createdAt:Date.now() }).then(function(docRef){
+      ui.shareViewUrl = location.origin + location.pathname + '?rv=' + docRef.id;
+      ui.shareViewAudioStripped = built.audioStripped;
+      ui.shareViewLoading = false;
+      render();
+    }).catch(function(){
+      /* Firestoreへの保存に失敗した場合は、旧方式（URLへの直接埋め込み）にフォールバックする */
+      var fallback = generateViewOnlyHashUrl();
+      if(fallback.url.length > VIEW_LINK_MAX_LEN){
+        ui.shareViewOpen = false;
+        ui.shareViewLoading = false;
+        alert('共有リンクの作成に失敗しました。しばらくしてからもう一度お試しください。');
+        render();
+        return;
+      }
+      ui.shareViewUrl = fallback.url;
+      ui.shareViewAudioStripped = fallback.audioStripped;
+      ui.shareViewLoading = false;
+      render();
+    });
   }
   function renderShareViewModal(){
+    if(ui.shareViewLoading){
+      return '<div class="modal-backdrop" id="shareViewBackdrop">' +
+        '<div class="modal-box" role="dialog" aria-label="共有リンク（閲覧専用）">' +
+          '<h2>共有リンク（閲覧専用）</h2>' +
+          '<p class="empty-hint">リンクを作成しています…</p>' +
+          '<div class="modal-actions"><button class="btn" id="shareViewCloseBtn">閉じる</button></div>' +
+        '</div>' +
+      '</div>';
+    }
     return '<div class="modal-backdrop" id="shareViewBackdrop">' +
       '<div class="modal-box" role="dialog" aria-label="共有リンク（閲覧専用）">' +
         '<h2>共有リンク（閲覧専用）</h2>' +
@@ -3592,7 +3633,7 @@
     if(state.audio.dataUrl) AUDIO_EL.src = state.audio.dataUrl;
   }
 
-  /* 閲覧専用リンク（#v=<圧縮データ>）：サーバーを介さずURL自体に状態を埋め込む方式。
+  /* 閲覧専用リンク（#v=<圧縮データ>）：サーバーを介さずURL自体に状態を埋め込む方式（旧方式・フォールバック用）。
      Firestoreの?p=より優先して判定する（自己完結型でネットワーク不要のため）。 */
   var viewOnlyPayload = (function(){
     var m = window.location.hash.match(/#v=(.+)/);
@@ -3602,12 +3643,30 @@
       return json ? JSON.parse(json) : null;
     }catch(e){ return null; }
   })();
+  /* 閲覧専用リンク（?rv=<FirestoreドキュメントID>）：現在の標準方式。viewSnapshotsコレクションは
+     firestore.rulesで作成後の更新・削除を禁止しており、一度発行したリンクの内容は変わらない。 */
+  var viewSnapshotId = (function(){
+    var m = window.location.search.match(/[?&]rv=([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : null;
+  })();
 
   if(viewOnlyPayload){
     applyLoadedState(viewOnlyPayload);
     ui.isReadOnly = true;
     ui.screen = 'editor';
     render();
+  } else if(viewSnapshotId && cfDb){
+    root.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted)">読み込み中…</div>';
+    cfDb.collection('viewSnapshots').doc(viewSnapshotId).get().then(function(doc){
+      if(doc.exists && doc.data() && doc.data().state){
+        applyLoadedState(doc.data().state);
+        ui.isReadOnly = true;
+        ui.screen = 'editor';
+      }
+      render();
+    }).catch(function(){
+      render();
+    });
   } else if(cloudProjectId && cfDb){
     root.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted)">読み込み中…</div>';
     cfDb.collection('projects').doc(cloudProjectId).get().then(function(doc){

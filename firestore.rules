@@ -8,5 +8,14 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.resource.data.keys().hasOnly(['state', 'updatedAt']);
     }
+
+    // 閲覧専用の共有リンク（?rv=<id>）用のスナップショット。
+    // 誰でも作成・閲覧できるが、一度作成したら二度と書き換え・削除はできない
+    // （URLに直接埋め込む代わりに短いIDで参照するだけで、意味的には「閲覧専用」を維持する）。
+    match /viewSnapshots/{snapshotId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['state', 'createdAt']);
+      allow update, delete: if false;
+    }
   }
 }
