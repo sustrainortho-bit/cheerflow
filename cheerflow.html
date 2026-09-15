@@ -313,6 +313,7 @@
     padding:14px; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);
   }
   .present-countnotes-side h3{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); }
+  .present-cn-grid{ display:flex; flex-direction:column; gap:6px; }
   .present-cn-row{ display:flex; gap:8px; font-size:13px; align-items:baseline; }
   .present-cn-row b{ color:var(--accent); font-family:'IBM Plex Mono'; min-width:16px; flex:0 0 auto; }
   .present-cn-row span{ color:var(--text); word-break:break-word; }
@@ -324,11 +325,14 @@
       /* vhはiOS Safariでツールバー表示中/非表示中で基準となる高さが変わるため、
          対応ブラウザではdvh（実際に見えている高さ基準）を優先して使う。 */
       max-height:20vh; max-height:20dvh;
-      /* 1〜8を縦一列で並べると縦に長くなりがちなので、編集画面サイドバーの
-         カウント別メモ欄と同じ2列グリッドにして必要な縦スペースを半分程度にする。 */
-      display:grid; grid-template-columns:1fr 1fr; gap:2px 12px; align-content:start;
     }
-    .present-countnotes-side h3{ grid-column:1 / -1; }
+    /* 1〜8を縦一列で並べると縦に長くなりがちなので2列にする。左列に1〜4・右列に
+       5〜8が上から順に並ぶよう、grid-auto-flow:columnで列方向に流し込む
+       （行方向だと1・2が1行目、3・4が2行目…という並びになり分かりにくいため）。 */
+    .present-cn-grid{
+      display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(4, auto);
+      grid-auto-flow:column; gap:2px 12px;
+    }
     .present-info{ gap:2px; }
     .present-info h2{ font-size:18px; }
     .present-note{ font-size:12px; }
@@ -2174,7 +2178,7 @@
       '</div>' +
       '<div class="present-body">' +
         '<div class="present-stage-wrap">'+renderStageSvg(sc,{mini:false}).replace(' stage-main','')+'</div>' +
-        '<div class="present-countnotes-side"><h3>カウント別メモ</h3>'+cnRows.join('')+'</div>' +
+        '<div class="present-countnotes-side"><h3>カウント別メモ</h3><div class="present-cn-grid">'+cnRows.join('')+'</div></div>' +
       '</div>' +
       '<div class="present-info">' +
         '<span class="sect" style="color:'+sect.color+';font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:12px;">'+sect.label+'</span>' +
