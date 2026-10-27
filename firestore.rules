@@ -1,19 +1,148 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 認証なしのリンク共有モデル：URLの projectId (Firestoreのドキュメント自動採番ID、
-    // 事実上推測不可能な文字列) を知っている人は誰でも読み書きできる。
-    // Googleドキュメントの「リンクを知っている全員が編集可」と同じセキュリティモデル。
+
+    function signedIn() { return request.auth != null; }
+    function myUid() { return request.auth.uid; }
+    // 招待の照合に使うメールアドレス（Googleログインは確認済みメールのみ）
+    function myEmail() {
+      return signedIn() && request.auth.token.email != null && request.auth.token.email_verified == true
+        ? request.auth.token.email.lower() : '';
+    }
+
+    // 旧方式（アカウント導入前）のプロジェクト：ownerUidを持たず、リンクを知っていれば誰でも読み書きできる
+    function isLegacy(d) { return !('ownerUid' in d); }
+    function roleIn(d) {
+      return !signedIn() ? '' :
+        (d.ownerUid == myUid() ? 'owner' :
+          (myUid() in d.editorUids ? 'editor' :
+            (myUid() in d.viewerUids ? 'viewer' : '')));
+    }
+    function isMember(d) { return signedIn() && myUid() in d.memberUids; }
+    function isInvited(d) { return myEmail() != '' && myEmail() in d.inviteEmails; }
+    function linkOpen(d) { return d.linkRole == 'viewer' || d.linkRole == 'editor'; }
+    function validLinkRole(r) { return r == 'none' || r == 'viewer' || r == 'editor'; }
+
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function onlyMyInfoChanged() {
+      return request.resource.data.memberInfo.diff(resource.data.memberInfo).affectedKeys().hasOnly([myUid()]);
+    }
+    function me() { return [myUid()].toSet(); }
+
+    function contentKeys() { return ['state', 'title', 'updatedAt', 'updatedBy', 'updatedSession', 'rev']; }
+    function sharingKeys() {
+      return ['editorUids', 'viewerUids', 'memberUids', 'memberInfo', 'inviteEmails', 'inviteEditors', 'linkRole', 'ownerName', 'ownerEmail'];
+    }
+    function requiredKeys() {
+      return ['state', 'ownerUid', 'editorUids', 'viewerUids', 'memberUids', 'memberInfo', 'inviteEmails', 'inviteEditors', 'linkRole'];
+    }
+    function allowedKeys() {
+      return requiredKeys().concat(['title', 'updatedAt', 'updatedBy', 'updatedSession', 'rev', 'ownerName', 'ownerEmail', 'createdAt']);
+    }
+
+    // 新規作成・旧方式からの取り込み：自分だけがオーナーの状態で始まる
+    function validNewOwnedDoc(d) {
+      return signedIn()
+        && d.keys().hasAll(requiredKeys()) && d.keys().hasOnly(allowedKeys())
+        && d.ownerUid == myUid()
+        && d.memberUids == [myUid()]
+        && d.editorUids == [] && d.viewerUids == []
+        && d.inviteEmails == [] && d.inviteEditors == []
+        && d.memberInfo.keys().hasOnly([myUid()])
+        && validLinkRole(d.linkRole);
+    }
+
+    // オーナーによる共有設定の変更。所有者は移せず、オーナー自身は常にメンバーに含まれる
+    function ownerManage() {
+      let d = request.resource.data;
+      let owner = resource.data.ownerUid;
+      return owner == myUid()
+        && d.ownerUid == owner
+        && changed().hasOnly(contentKeys().concat(sharingKeys()))
+        && owner in d.memberUids
+        && !(owner in d.editorUids) && !(owner in d.viewerUids)
+        && validLinkRole(d.linkRole);
+    }
+
+    // 招待された本人が参加する（自分のメールを招待一覧から外し、招待された役割で自分を追加するだけ）
+    function acceptInvite() {
+      let d = request.resource.data;
+      let r = resource.data;
+      let asEditor = myEmail() in r.inviteEditors;
+      return changed().hasOnly(['editorUids', 'viewerUids', 'memberUids', 'memberInfo', 'inviteEmails', 'inviteEditors'])
+        && d.memberUids.toSet() == r.memberUids.toSet().union(me())
+        && (asEditor
+            ? (d.editorUids.toSet() == r.editorUids.toSet().union(me()) && d.viewerUids == r.viewerUids)
+            : (d.viewerUids.toSet() == r.viewerUids.toSet().union(me()) && d.editorUids == r.editorUids))
+        && d.inviteEmails.toSet() == r.inviteEmails.toSet().difference([myEmail()].toSet())
+        && d.inviteEditors.toSet() == r.inviteEditors.toSet().difference([myEmail()].toSet())
+        && onlyMyInfoChanged();
+    }
+
+    // リンク共有されたプロジェクトに、リンクの権限のまま自分を追加する
+    function joinViaLink() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return !(myUid() in r.memberUids)
+        && changed().hasOnly(['editorUids', 'viewerUids', 'memberUids', 'memberInfo'])
+        && d.memberUids.toSet() == r.memberUids.toSet().union(me())
+        && (r.linkRole == 'editor'
+            ? (d.editorUids.toSet() == r.editorUids.toSet().union(me()) && d.viewerUids == r.viewerUids)
+            : (d.viewerUids.toSet() == r.viewerUids.toSet().union(me()) && d.editorUids == r.editorUids))
+        && onlyMyInfoChanged();
+    }
+
+    // 編集者・閲覧者が自分でプロジェクトから抜ける
+    function leave() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return changed().hasOnly(['editorUids', 'viewerUids', 'memberUids', 'memberInfo'])
+        && d.memberUids.toSet() == r.memberUids.toSet().difference(me())
+        && d.editorUids.toSet() == r.editorUids.toSet().difference(me())
+        && d.viewerUids.toSet() == r.viewerUids.toSet().difference(me())
+        && onlyMyInfoChanged();
+    }
+
     match /projects/{projectId} {
-      allow read: if true;
-      allow write: if request.resource.data.keys().hasOnly(['state', 'updatedAt']);
+      // IDを知っていれば開ける：旧方式・メンバー・招待された人・リンク共有
+      allow get: if isLegacy(resource.data) || isMember(resource.data) || isInvited(resource.data) || linkOpen(resource.data);
+      // 一覧取得は「自分がメンバー」か「自分が招待されている」プロジェクトに限る（他人のプロジェクトを列挙させない）
+      allow list: if signedIn() && (myUid() in resource.data.memberUids || myEmail() in resource.data.inviteEmails);
+
+      allow create: if validNewOwnedDoc(request.resource.data);
+
+      allow update: if
+        // ① 旧方式プロジェクトの従来どおりの編集（リンクを知っていれば誰でも）
+        (isLegacy(resource.data) && request.resource.data.keys().hasOnly(['state', 'updatedAt']))
+        // ② 旧方式プロジェクトを自分のアカウントに取り込む
+        || (isLegacy(resource.data) && validNewOwnedDoc(request.resource.data))
+        // ③ オーナー・編集者による内容の編集
+        || (!isLegacy(resource.data) && (roleIn(resource.data) == 'owner' || roleIn(resource.data) == 'editor')
+            && changed().hasOnly(contentKeys()))
+        // ④ オーナーによる共有設定の変更
+        || (!isLegacy(resource.data) && ownerManage())
+        // ⑤ 招待された人の参加
+        || (!isLegacy(resource.data) && isInvited(resource.data) && acceptInvite())
+        // ⑥ リンク共有からの参加（ログイン必須）
+        || (!isLegacy(resource.data) && signedIn() && linkOpen(resource.data) && joinViaLink())
+        // ⑦ 編集者・閲覧者の退出
+        || (!isLegacy(resource.data) && (roleIn(resource.data) == 'editor' || roleIn(resource.data) == 'viewer') && leave());
+
+      allow delete: if !isLegacy(resource.data) && roleIn(resource.data) == 'owner';
+
+      // 共同編集中に「誰が開いているか」を示す在席情報。メンバーだけが読み書きでき、書けるのは自分の分だけ
+      match /presence/{uid} {
+        function project() { return get(/databases/$(database)/documents/projects/$(projectId)).data; }
+        allow read: if signedIn() && !isLegacy(project()) && myUid() in project().memberUids;
+        allow write: if signedIn() && uid == myUid() && !isLegacy(project()) && myUid() in project().memberUids;
+      }
     }
 
     // 閲覧専用の共有リンク（?rv=<id>）用のスナップショット。
     // 誰でも作成・閲覧できるが、一度作成したら二度と書き換え・削除はできない
     // （URLに直接埋め込む代わりに短いIDで参照するだけで、意味的には「閲覧専用」を維持する）。
     match /viewSnapshots/{snapshotId} {
-      allow read: if true;
+      allow get: if true;
       allow create: if request.resource.data.keys().hasOnly(['state', 'createdAt']);
       allow update, delete: if false;
     }

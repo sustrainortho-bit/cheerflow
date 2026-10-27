@@ -1,0 +1,13 @@
+{
+  "name": "cheerflow",
+  "private": true,
+  "description": "CheerFlow 開発用（本体は cheerflow.html 単体で動作し、ビルド不要）。ここにあるのはFirestoreセキュリティルールのテスト用依存のみ。",
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore --project demo-cheerflow \"node --test tests/rules.test.mjs\"",
+    "emulators": "firebase emulators:start --only auth,firestore,hosting --project demo-cheerflow"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0"
+  }
+}

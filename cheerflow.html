@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CheerFlow</title>
+<meta name="theme-color" content="#121017">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CheerFlow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -105,7 +113,90 @@
   }
   .project-list-open:hover{ border-color:var(--accent); }
   .project-list-title{ font-size:14px; font-family:'Manrope'; font-weight:700; }
-  .project-list-date{ font-size:11px; color:var(--text-muted); }
+  .project-list-date{ font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .project-list-open.static{ cursor:default; }
+  .project-list-open.static:hover{ border-color:var(--border); }
+  .project-list-row > .btn{ align-self:center; }
+
+  /* ---------- account / home dashboard ---------- */
+  .home-login-card{
+    width:min(540px,100%); border:1px solid var(--accent); background:var(--accent-soft); border-radius:var(--radius);
+    padding:20px 22px; display:flex; flex-direction:column; gap:14px; box-shadow:var(--shadow);
+  }
+  .home-login-card h2{ margin:0 0 6px; font-size:18px; }
+  .home-login-card p{ margin:0; font-size:13px; line-height:1.6; color:var(--text); }
+  .home-login-card > .btn{ align-self:flex-start; padding:10px 18px; font-size:14px; }
+  .home-local-caption{ margin:-10px 0 -14px; font-size:12px; color:var(--text-muted); }
+  .dev-signin{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:11px; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:10px; }
+  .dev-signin input{ border:1px solid var(--border); background:var(--surface); padding:5px 8px; border-radius:7px; font-size:12px; }
+  .home-dashboard{ justify-content:flex-start; align-items:stretch; gap:18px; width:100%; max-width:760px; margin:0 auto; padding:28px 20px 40px; }
+  .dash-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .dash-top .home-brand{ font-size:28px; }
+  .dash-account{ display:flex; align-items:center; gap:10px; }
+  .dash-account-text{ display:flex; flex-direction:column; line-height:1.3; }
+  .dash-account-text span{ font-size:13px; font-weight:700; }
+  .dash-account-text small{ font-size:11px; color:var(--text-muted); }
+  .dash-actions{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .dash-actions > .btn{ padding:10px 18px; font-size:14px; }
+  .dash-section h2{ font-size:14px; margin:6px 0 0; color:var(--text-muted); }
+  .dash-section .project-list{ margin-top:10px; }
+  .invite-row .project-list-open{ border-color:var(--accent); }
+  .role-pill{ font-size:10px; font-weight:800; padding:1px 7px; border-radius:99px; border:1px solid var(--border); color:var(--text); }
+  .role-pill.role-owner{ border-color:var(--accent); color:var(--accent); }
+  .role-pill.role-editor{ border-color:var(--hue-teal); color:var(--hue-teal); }
+  .role-pill.role-viewer{ border-color:var(--hue-grey); color:var(--text-muted); }
+  .cloud-error-msg{ max-width:480px; text-align:center; font-size:14px; line-height:1.8; margin:0; }
+
+  .avatar{
+    width:28px; height:28px; border-radius:50%; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+    background:var(--surface-2); border:2px solid var(--surface); color:var(--text); font-size:12px; font-weight:800; overflow:hidden;
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; }
+  .presence-avatars{ display:inline-flex; align-items:center; }
+  .presence-avatars .avatar{ margin-left:-6px; border-color:var(--hue-teal); }
+  .presence-avatars .avatar:first-child{ margin-left:0; }
+  .presence-more{ font-size:11px; color:var(--text-muted); margin-left:4px; }
+  .account-wrap{ position:relative; }
+  .account-chip{ border:none; background:none; padding:0; cursor:pointer; display:flex; }
+  .account-menu{
+    position:absolute; top:calc(100% + 6px); right:0; width:230px; background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; box-shadow:var(--shadow); padding:8px; display:flex; flex-direction:column; gap:2px; z-index:60;
+  }
+  .account-menu-name{ font-size:13px; font-weight:700; padding:4px 10px 0; }
+  .account-menu-email{ font-size:11px; color:var(--text-muted); padding:0 10px 6px; border-bottom:1px solid var(--border); margin-bottom:4px; word-break:break-all; }
+  .account-menu button{ text-align:left; border:none; background:transparent; padding:9px 10px; border-radius:8px; cursor:pointer; font-size:13px; color:var(--text); }
+  .account-menu button:hover{ background:var(--surface-2); }
+
+  /* ---------- share dialog ---------- */
+  .modal-box.share-box{ width:560px; gap:16px; }
+  .share-head{ display:flex; align-items:center; justify-content:space-between; }
+  .share-section{ display:flex; flex-direction:column; gap:8px; }
+  .share-label{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:800; }
+  .share-section select, .share-invite-row input, .share-link-row input{
+    border:1px solid var(--border); background:var(--surface-2); padding:8px 10px; border-radius:8px; min-width:0; font-size:13px;
+  }
+  .share-current{ margin:0; font-size:13px; }
+  .share-link-row, .share-invite-row{ display:flex; gap:6px; align-items:center; }
+  .share-link-row input, .share-invite-row input{ flex:1; }
+  .share-members{ display:flex; flex-direction:column; gap:4px; max-height:38vh; overflow:auto; }
+  .share-member{ display:flex; align-items:center; gap:10px; padding:6px 4px; border-radius:8px; }
+  .share-member.pending{ opacity:.85; }
+  .share-member-text{ flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.3; }
+  .share-member-text span{ font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .share-member-text small{ font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .share-member select{ border:1px solid var(--border); background:var(--surface-2); padding:5px 6px; border-radius:7px; font-size:12px; }
+  .share-role{ font-size:12px; color:var(--text-muted); }
+  .share-foot{ display:flex; justify-content:flex-end; border-top:1px solid var(--border); padding-top:10px; }
+  .share-points{ margin:0; padding-left:18px; font-size:13px; line-height:1.8; color:var(--text-muted); }
+  a.btn{ text-decoration:none; }
+  @media (max-width:560px){ .share-invite-row{ flex-wrap:wrap; } .share-invite-row input{ flex-basis:100%; } }
+
+  .cf-toast{
+    position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:300;
+    background:var(--text); color:var(--bg); padding:10px 16px; border-radius:10px; font-size:13px; font-weight:700;
+    box-shadow:var(--shadow); max-width:calc(100vw - 32px); transition:opacity .4s;
+  }
+  .cf-toast.out{ opacity:0; }
 
   /* ---------- modal ---------- */
   .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:120; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -149,8 +240,10 @@
 
   .readonly-banner{
     background:var(--accent-soft); border-bottom:1px solid var(--border); color:var(--text);
-    padding:7px 16px; font-size:12px; display:flex; gap:8px; align-items:center;
+    padding:7px 16px; font-size:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;
   }
+  .readonly-banner > span{ flex:1 1 260px; }
+  .conflict-banner{ background:color-mix(in srgb, var(--hue-amber) 22%, var(--surface)); }
 
   .editor-body{ flex:1; min-height:0; display:grid; grid-template-columns:var(--audio-panel-w,340px) 6px 1fr; grid-template-rows:minmax(0,1fr); overflow:hidden; }
   .editor-body.with-sidebar{ grid-template-columns:var(--audio-panel-w,340px) 6px 2fr 1fr; }
@@ -209,6 +302,12 @@
     cursor:pointer; box-shadow:var(--shadow); opacity:.9;
   }
   .viewpoint-toggle:hover{ opacity:1; border-color:var(--accent); }
+  .multisel-toggle{
+    position:absolute; top:44px; right:8px; z-index:5; font-size:11px; font-weight:700; letter-spacing:.02em;
+    padding:6px 12px; border-radius:99px; border:1px solid var(--border); background:var(--surface); color:var(--text);
+    cursor:pointer; box-shadow:var(--shadow); opacity:.9;
+  }
+  .multisel-toggle.on{ background:var(--accent); border-color:var(--accent); color:var(--accent-contrast); opacity:1; }
   .stage-scene-title{
     position:absolute; top:8px; left:8px; z-index:5; max-width:60%; font-size:12px; font-weight:700;
     padding:5px 10px; border-radius:99px; border:1px solid var(--border); background:var(--surface); color:var(--text);
@@ -452,7 +551,37 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<script>
+/* 旧公開先（GitHub Pages）から新しい公開先（Firebase Hosting）へ転送する。
+   localStorageは公開先（オリジン）ごとに別々なので、この端末に保存されていたプロジェクトを
+   URLの#migrate=に詰めて新しい公開先へ持っていく。 */
+(function(){
+  if(location.hostname !== 'sustrainortho-bit.github.io') return;
+  var target = 'https://cheerflow-app.web.app/cheerflow.html' + location.search;
+  var hash = location.hash;
+  if(!hash && window.LZString){
+    try{
+      var keys = ['cheerflow_project_v1','cheerflow_project_list_v1','cheerflow_audio_panel_w','cheerflow_last_cloud_id'];
+      var bundle = {}, has = false;
+      keys.forEach(function(k){ var v = localStorage.getItem(k); if(v){ bundle[k] = v; has = true; } });
+      if(has){
+        var packed = LZString.compressToEncodedURIComponent(JSON.stringify(bundle));
+        if(packed.length > 1500000 && bundle.cheerflow_project_v1){
+          var st = JSON.parse(bundle.cheerflow_project_v1);
+          if(st && st.audio && st.audio.dataUrl){ st.audio.dataUrl = ''; bundle.audioStripped = '1'; }
+          bundle.cheerflow_project_v1 = JSON.stringify(st);
+          packed = LZString.compressToEncodedURIComponent(JSON.stringify(bundle));
+        }
+        if(packed.length <= 1500000) hash = '#migrate=' + packed;
+      }
+    }catch(e){}
+  }
+  window.__cfRedirecting = true;
+  location.replace(target + hash);
+})();
+</script>
 </head>
 <body>
 <div id="root"></div>
@@ -460,6 +589,7 @@
 <script id="app-script">
 (function(){
   'use strict';
+  if(window.__cfRedirecting) return;
   var HEAD_HTML = document.head.outerHTML;
   var SCRIPT_HTML = document.currentScript.outerHTML;
 
@@ -560,6 +690,23 @@
   }
 
   var LS_KEY = 'cheerflow_project_v1';
+  var LAST_CLOUD_KEY = 'cheerflow_last_cloud_id'; /* LS_KEYの内容がどのクラウドプロジェクト(?p=)のものか */
+  /* 旧公開先（GitHub Pages）から#migrate=付きで転送されてきた場合、その端末のデータを取り込む。
+     こちら側に既にデータがあるキーは上書きしない（新しい公開先で作業した内容を優先）。 */
+  var migratedAudioStripped = false;
+  (function(){
+    var m = location.hash.match(/^#migrate=(.+)$/);
+    if(!m) return;
+    try{
+      var bundle = JSON.parse(LZString.decompressFromEncodedURIComponent(m[1]) || '{}');
+      Object.keys(bundle).forEach(function(k){
+        if(k.indexOf('cheerflow_')!==0) return;
+        if(localStorage.getItem(k)===null) localStorage.setItem(k, bundle[k]);
+      });
+      migratedAudioStripped = bundle.audioStripped==='1';
+    }catch(e){}
+    try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+  })();
   var initialState = null;
   try{
     var raw = document.getElementById('app-state').textContent;
@@ -582,21 +729,41 @@
   var hasArtifactApi = !!(window.claude && window.claude.use);
 
   /* ---------- Firebase (クラウド保存・共有リンク用) ---------- */
+  /* Firebase Hostingで配信しているときは、ログイン処理(/__/auth/handler)もアプリと同じドメインで行う。
+     iPadのSafariや「ホーム画面に追加」したアプリ表示では、別ドメインのログイン画面との連携が
+     ブロックされやすいため。 */
+  var onFirebaseHosting = /^cheerflow-app\.(web\.app|firebaseapp\.com)$/.test(location.hostname);
   var FIREBASE_CONFIG = {
     apiKey: "AIzaSyDyO6em-gCsvFMLEmz87KqQwEKOzfGkLtE",
-    authDomain: "cheerflow-app.firebaseapp.com",
+    authDomain: onFirebaseHosting ? location.hostname : "cheerflow-app.firebaseapp.com",
     projectId: "cheerflow-app",
     storageBucket: "cheerflow-app.firebasestorage.app",
     messagingSenderId: "1070982746205",
     appId: "1:1070982746205:web:90f6c87ff1a8ad533afdb4"
   };
-  var cfDb = null;
+  /* 開発用：localhostで ?emu=1 を付けて開くと、本番ではなくローカルのFirebaseエミュレーターに接続する */
+  var USE_EMULATORS = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) &&
+    (/[?&]emu=1/.test(location.search) || (function(){ try{ return sessionStorage.getItem('cf_emu')==='1'; }catch(e){ return false; } })());
+  if(USE_EMULATORS){
+    try{ sessionStorage.setItem('cf_emu','1'); }catch(e){}
+    FIREBASE_CONFIG.projectId = 'demo-cheerflow';
+  }
+  var cfDb = null, cfAuth = null;
   try{
     if(window.firebase && firebase.initializeApp){
       firebase.initializeApp(FIREBASE_CONFIG);
       cfDb = firebase.firestore();
+      if(USE_EMULATORS) cfDb.useEmulator('127.0.0.1', 8080);
+      if(!hasArtifactApi && firebase.auth){
+        cfAuth = firebase.auth();
+        if(USE_EMULATORS){
+          cfAuth.useEmulator('http://127.0.0.1:9099');
+          /* タブごとに別ユーザーでログインして共同編集を試せるようにする */
+          cfAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+        }
+      }
     }
-  }catch(e){ cfDb = null; }
+  }catch(e){ cfDb = null; cfAuth = null; }
   var cloudProjectId = (function(){
     var m = window.location.search.match(/[?&]p=([a-zA-Z0-9_-]+)/);
     return m ? m[1] : null;
@@ -631,8 +798,620 @@
     if(!state.hasProject) return;
     if(scheduleLocalSave._t) clearTimeout(scheduleLocalSave._t);
     scheduleLocalSave._t = setTimeout(function(){
-      try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+      try{
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        localStorage.setItem(LAST_CLOUD_KEY, cloudProjectId || '');
+      }catch(e){}
     }, 600);
+  }
+
+  /* ================= アカウント・クラウド共同編集 ================= */
+  /* projects/{id} の共有・権限まわりのフィールド（state本体以外）:
+       ownerUid / ownerName / ownerEmail : オーナー（所有者は移せない）
+       editorUids / viewerUids          : 編集者・閲覧者のuid
+       memberUids                       : オーナー＋編集者＋閲覧者（一覧取得のクエリ用）
+       memberInfo                       : uid → {name, email, photo}（共有画面の表示用）
+       inviteEmails / inviteEditors     : 招待中のメールアドレス（inviteEditorsに入っていれば編集者として招待）
+       linkRole                         : 'none'(招待した人のみ) / 'viewer'(リンクで閲覧) / 'editor'(リンクで編集・要ログイン)
+       rev / updatedBy / updatedSession : 共同編集の衝突検知用（保存のたびにrevが1増える）
+     ownerUidを持たないドキュメントは旧方式（アカウント導入前の「リンクを知っていれば誰でも編集可」）。
+     権限の正はfirestore.rules。ここの判定は画面表示の切り替えに使うだけ。 */
+  var SESSION_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  var currentUser = null;
+  var authResolved = !cfAuth;
+  var authReadyCallbacks = [];
+  function whenAuthReady(fn){ if(authResolved) fn(); else authReadyCallbacks.push(fn); }
+  var cloudMeta = null;   /* 開いているクラウドプロジェクトの共有・権限情報 */
+  var cloudBaseRev = 0;   /* 手元のstateがどのrevのクラウド版を元にしているか */
+  var dirtySeq = 0;       /* 編集のたびに増える。保存中に次の編集が入ったかの判定用 */
+  var cloudUnsub = null, presenceUnsub = null, presenceTimer = null;
+  var cloudSaveTimer = null, cloudSaving = false;
+  var ROLE_LABELS = { owner:'オーナー', editor:'編集者', viewer:'閲覧者' };
+  var LINK_ROLE_LABELS = {
+    none:   '招待した人のみ',
+    viewer: 'リンクを知っている人は閲覧できる（ログイン不要）',
+    editor: 'リンクを知っている人は編集できる（Googleログインが必要）'
+  };
+
+  function metaFrom(data){
+    var m = {};
+    Object.keys(data||{}).forEach(function(k){ if(k!=='state') m[k] = data[k]; });
+    m.legacy = !('ownerUid' in (data||{}));
+    return m;
+  }
+  function myEmailLower(){ return currentUser && currentUser.email ? currentUser.email.toLowerCase() : ''; }
+  function myInfo(){
+    return {
+      name: (currentUser && (currentUser.displayName || currentUser.email)) || '名前未設定',
+      email: myEmailLower(),
+      photo: (currentUser && currentUser.photoURL) || ''
+    };
+  }
+  /* 'local'(クラウド未保存) / 'legacy'(旧方式) / 'owner' / 'editor' / 'viewer' / ''(未参加) */
+  function cloudRole(){
+    if(!cloudProjectId || !cloudMeta) return 'local';
+    if(cloudMeta.legacy) return 'legacy';
+    if(!currentUser) return '';
+    var uid = currentUser.uid;
+    if(cloudMeta.ownerUid===uid) return 'owner';
+    if((cloudMeta.editorUids||[]).indexOf(uid)>=0) return 'editor';
+    if((cloudMeta.viewerUids||[]).indexOf(uid)>=0) return 'viewer';
+    return '';
+  }
+  function isSharedProject(){ return !!(cloudProjectId && cloudMeta && !cloudMeta.legacy); }
+  function isInvitedHere(){
+    return isSharedProject() && !!myEmailLower() && (cloudMeta.inviteEmails||[]).indexOf(myEmailLower())>=0;
+  }
+  function canEditCloud(){ var r = cloudRole(); return r==='owner' || r==='editor'; }
+  function applyCloudAccess(){ if(isSharedProject()) ui.isReadOnly = !canEditCloud(); }
+  function shareUrl(){ return location.origin + location.pathname + '?p=' + cloudProjectId; }
+
+  function showToast(text){
+    var el = document.createElement('div');
+    el.className = 'cf-toast';
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(function(){ el.classList.add('out'); }, 2800);
+    setTimeout(function(){ el.remove(); }, 3300);
+  }
+  function avatarHtml(name, photo, title){
+    var initial = escapeHtml(String(name||'?').trim().charAt(0) || '?');
+    return '<span class="avatar" title="'+escapeHtml(title||name||'')+'">' +
+      (photo ? '<img src="'+escapeHtml(photo)+'" alt="" referrerpolicy="no-referrer">' : initial) + '</span>';
+  }
+
+  /* 入力欄に文字を打っている最中に画面を作り直すと、入力途中の内容やフォーカスが失われる。
+     他のメンバーの変更による再描画は、入力欄からフォーカスが外れるまで待つ。 */
+  var renderPending = false;
+  function isTypingInApp(){
+    var a = document.activeElement;
+    if(!a || !root || !root.contains(a)) return false;
+    if(a.tagName==='TEXTAREA' || a.isContentEditable) return true;
+    return a.tagName==='INPUT' && !/^(button|checkbox|radio|range|color|file|submit)$/i.test(a.type);
+  }
+  function requestRender(){
+    if(isTypingInApp()){ renderPending = true; return; }
+    renderPending = false;
+    render();
+  }
+  document.addEventListener('focusout', function(){
+    if(!renderPending) return;
+    setTimeout(function(){ if(renderPending && !isTypingInApp()){ renderPending = false; render(); } }, 0);
+  });
+  function refreshSaveStatus(){
+    var el = document.querySelector('.save-status');
+    if(!el) return;
+    el.textContent = saveStatusText();
+    el.classList.toggle('err', ui.saveStatus==='error');
+  }
+
+  /* ---------- ログイン ---------- */
+  function authErrorMessage(err){
+    var code = err && err.code;
+    if(code==='auth/operation-not-allowed' || code==='auth/configuration-not-found')
+      return 'Googleログインがまだ有効になっていません。管理者がFirebaseコンソールでGoogleログインを有効にする必要があります。';
+    if(code==='auth/unauthorized-domain') return 'このURLからはログインできません（Firebaseの承認済みドメインへの追加が必要です）。';
+    if(code==='auth/network-request-failed') return 'ネットワークに接続できませんでした。通信状況を確認してください。';
+    return 'ログインに失敗しました（'+(code||'不明なエラー')+'）';
+  }
+  function signInWithGoogle(){
+    if(!cfAuth){ alert('この環境ではログインできません。'); return; }
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt:'select_account' });
+    /* ホーム画面に追加したアプリ表示ではポップアップが使えないため、画面遷移方式でログインする */
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+    if(standalone && !USE_EMULATORS){ cfAuth.signInWithRedirect(provider); return; }
+    cfAuth.signInWithPopup(provider).catch(function(err){
+      var code = err && err.code;
+      if(code==='auth/popup-blocked' || code==='auth/operation-not-supported-in-this-environment'){ cfAuth.signInWithRedirect(provider); return; }
+      if(code==='auth/popup-closed-by-user' || code==='auth/cancelled-popup-request') return;
+      alert(authErrorMessage(err));
+    });
+  }
+  /* エミュレーター接続時だけ使える、Googleアカウントの代わりのテスト用ログイン */
+  function devSignIn(email){
+    if(!USE_EMULATORS || !cfAuth || !email) return;
+    var token = JSON.stringify({ sub:'dev-'+email.toLowerCase().replace(/[^a-z0-9]/g,''), email:email, email_verified:true, name:email.split('@')[0] });
+    cfAuth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(token)).catch(function(err){ alert(authErrorMessage(err)); });
+  }
+  function signOutUser(){
+    if(!cfAuth) return;
+    if(ui.dirty && isSharedProject() && canEditCloud() && !confirm('まだ同期されていない変更があります。ログアウトしますか？')) return;
+    stopPresence(true);
+    cfAuth.signOut().then(function(){
+      /* 共用のタブレットで次の人がメンバー限定のプロジェクトを端末の保存データから開けないよう、
+         クラウドのプロジェクトの端末コピーは消す（この端末だけのプロジェクトは残す） */
+      if(cloudProjectId || lastCloudIdStored()){
+        clearTimeout(scheduleLocalSave._t);
+        try{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LAST_CLOUD_KEY); }catch(e){}
+      }
+      try{ history.replaceState(null, '', location.pathname); }catch(e){}
+      location.reload();
+    });
+  }
+  if(cfAuth){
+    cfAuth.getRedirectResult().catch(function(err){
+      if(err && err.code && err.code!=='auth/no-auth-event') alert(authErrorMessage(err));
+    });
+    cfAuth.onAuthStateChanged(function(user){
+      var prevUid = currentUser ? currentUser.uid : null;
+      currentUser = user;
+      if(!authResolved){
+        authResolved = true;
+        var cbs = authReadyCallbacks; authReadyCallbacks = [];
+        cbs.forEach(function(fn){ fn(); });
+        return;
+      }
+      if((user ? user.uid : null)===prevUid) return;
+      ui.cloudLists = null;
+      if(cloudProjectId) loadCloudProject(false); else render();
+    });
+  }
+
+  /* ---------- 一覧（ホーム画面） ---------- */
+  function summarizeProject(id, data){
+    var uid = currentUser ? currentUser.uid : '';
+    var st = data.state || {};
+    return {
+      id: id,
+      title: data.title || st.title || '無題のプロジェクト',
+      role: data.ownerUid===uid ? 'owner' : (data.editorUids||[]).indexOf(uid)>=0 ? 'editor' : (data.viewerUids||[]).indexOf(uid)>=0 ? 'viewer' : '',
+      inviteRole: (data.inviteEditors||[]).indexOf(myEmailLower())>=0 ? 'editor' : 'viewer',
+      ownerName: data.ownerName || '',
+      updatedMs: data.updatedAt && data.updatedAt.toMillis ? data.updatedAt.toMillis() : 0,
+      memberCount: (data.memberUids||[]).length,
+      sceneCount: (st.scenes||[]).length,
+      linkRole: data.linkRole || 'none'
+    };
+  }
+  function loadCloudLists(){
+    if(!cfDb || !currentUser || ui.cloudListsLoading) return;
+    ui.cloudListsLoading = true;
+    var uid = currentUser.uid, email = myEmailLower();
+    var col = cfDb.collection('projects');
+    Promise.all([
+      col.where('memberUids','array-contains', uid).get(),
+      email ? col.where('inviteEmails','array-contains', email).get() : Promise.resolve(null)
+    ]).then(function(res){
+      var mine = res[0].docs.map(function(d){ return summarizeProject(d.id, d.data()); });
+      mine.sort(function(a,b){ return b.updatedMs - a.updatedMs; });
+      var invites = res[1] ? res[1].docs
+        .filter(function(d){ return (d.data().memberUids||[]).indexOf(uid)<0; })
+        .map(function(d){ return summarizeProject(d.id, d.data()); }) : [];
+      ui.cloudLists = { mine: mine, invites: invites };
+    }).catch(function(err){
+      ui.cloudLists = { mine: [], invites: [], error: (err && err.code) || 'error' };
+    }).then(function(){
+      ui.cloudListsLoading = false;
+      if(ui.screen==='home') render();
+    });
+  }
+  function openCloudProject(id){
+    window.location.href = window.location.pathname + '?p=' + encodeURIComponent(id);
+  }
+
+  /* ---------- 保存先のクラウドプロジェクトを作る・取り込む ---------- */
+  function cloudPayloadOrNull(){
+    var payload;
+    try{ payload = JSON.parse(JSON.stringify(state)); }catch(e){ return null; }
+    /* Firestoreの1ドキュメント上限(1MiB)に余裕を持たせる。アップロード音声が大きい場合に超える */
+    if(new Blob([JSON.stringify(payload)]).size > 900000) return null;
+    return payload;
+  }
+  function newOwnedDocData(payload){
+    var me = myInfo(), info = {};
+    info[currentUser.uid] = me;
+    var now = firebase.firestore.FieldValue.serverTimestamp();
+    return {
+      state: payload, title: payload.title || '',
+      ownerUid: currentUser.uid, ownerName: me.name, ownerEmail: me.email,
+      editorUids: [], viewerUids: [], memberUids: [currentUser.uid], memberInfo: info,
+      inviteEmails: [], inviteEditors: [], linkRole: 'none',
+      rev: 1, createdAt: now, updatedAt: now,
+      updatedBy: { uid: currentUser.uid, name: me.name }, updatedSession: SESSION_ID
+    };
+  }
+  function adoptCloudProject(id, data){
+    cloudProjectId = id;
+    cloudMeta = metaFrom(data);
+    cloudBaseRev = data.rev || 0;
+    try{
+      var url = new URL(window.location.href);
+      url.searchParams.set('p', id);
+      history.replaceState(null, '', url.toString());
+    }catch(e){}
+    /* 端末の「以前の共有リンク」一覧は旧方式のプロジェクト専用。アカウントのプロジェクトは外す */
+    removeProjectListEntry(id);
+    applyCloudAccess();
+    attachCloudListener();
+    startPresence();
+  }
+  /* この端末だけにあるプロジェクトを、自分のアカウントのプロジェクトとして保存する */
+  function saveLocalProjectToAccount(){
+    if(!cfDb || !currentUser){ signInWithGoogle(); return; }
+    var payload = cloudPayloadOrNull();
+    if(!payload){ ui.saveStatus='toolarge'; render(); return; }
+    var ref = cfDb.collection('projects').doc();
+    var data = newOwnedDocData(payload);
+    ui.saveStatus='saving'; render();
+    ref.set(data).then(function(){
+      adoptCloudProject(ref.id, data);
+      ui.dirty=false; ui.saveStatus='saved'; ui.cloudLists=null;
+      render();
+      showToast('アカウントに保存しました。「共有」からメンバーを招待できます。');
+    }).catch(function(){ ui.saveStatus='error'; render(); });
+  }
+  /* 旧方式のリンク共有プロジェクトを、自分がオーナーのプロジェクトに切り替える */
+  function claimLegacyProject(){
+    if(!cfDb || !cloudProjectId || !cloudMeta || !cloudMeta.legacy) return;
+    if(!currentUser){ signInWithGoogle(); return; }
+    if(!confirm('このプロジェクトをあなたのアカウントに追加します。\n\n・あなたがオーナーになり、メンバーの招待や権限の管理ができるようになります。\n・今のリンクを持っている人は引き続き開けますが、編集するにはGoogleログインが必要になります（共有設定で変更できます）。')) return;
+    var payload = cloudPayloadOrNull();
+    if(!payload){ ui.saveStatus='toolarge'; render(); return; }
+    var data = newOwnedDocData(payload);
+    data.linkRole = 'editor';
+    var id = cloudProjectId;
+    cfDb.collection('projects').doc(id).set(data).then(function(){
+      adoptCloudProject(id, data);
+      ui.dirty=false; ui.saveStatus='saved'; ui.cloudLists=null;
+      render();
+      showToast('アカウントに追加しました。');
+    }).catch(function(err){ alert('アカウントに追加できませんでした（'+((err && err.code) || 'エラー')+'）'); });
+  }
+
+  /* ---------- 開く・参加する ---------- */
+  function loadCloudProject(isInitial){
+    detachCloud();
+    if(isInitial) root.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted)">読み込み中…</div>';
+    var id = cloudProjectId;
+    cfDb.collection('projects').doc(id).get().then(function(doc){
+      if(id!==cloudProjectId) return;
+      if(!doc.exists || !doc.data() || !doc.data().state){
+        resetCloudContext();
+        ui.screen = 'home';
+        render();
+        showToast('プロジェクトが見つかりませんでした（削除された可能性があります）。');
+        return;
+      }
+      var data = doc.data();
+      if(isInitial || !ui.dirty){
+        applyLoadedState(data.state);
+        ui.undoStack=[]; ui.redoStack=[]; ui.dirty=false;
+      }
+      cloudMeta = metaFrom(data);
+      cloudBaseRev = data.rev || 0;
+      ui.cloudError = null;
+      ui.screen = 'editor';
+      if(cloudMeta.legacy) upsertProjectListEntry(id, state.title);
+      applyCloudAccess();
+      render();
+      if(!isSharedProject()) return;
+      /* 「リンクで編集可」のプロジェクトをログインして開いたら、編集者として自動で参加する
+         （自分のプロジェクト一覧に出て、在席表示や共同編集の対象になる） */
+      if(currentUser && cloudRole()==='' && cloudMeta.linkRole==='editor' && !isInvitedHere()){
+        joinProject('link', id).then(function(){ showToast('編集者として参加しました'); }, function(){});
+      }
+      attachCloudListener();
+      startPresence();
+    }).catch(function(err){
+      if(id!==cloudProjectId) return;
+      ui.cloudError = (err && err.code==='permission-denied') ? 'denied' : 'network';
+      ui.screen = 'cloudError';
+      render();
+    });
+  }
+  /* 招待（via='invite'）またはリンク共有（via='link'）で、自分をメンバーに加える */
+  function joinProject(via, id){
+    var ref = cfDb.collection('projects').doc(id);
+    return cfDb.runTransaction(function(tx){
+      return tx.get(ref).then(function(snap){
+        var d = snap.data();
+        var uid = currentUser.uid, email = myEmailLower();
+        if(!d || !d.ownerUid) throw new Error('not-shared');
+        if((d.memberUids||[]).indexOf(uid)>=0) return;
+        var info = Object.assign({}, d.memberInfo||{});
+        info[uid] = myInfo();
+        var upd = { memberUids: (d.memberUids||[]).concat([uid]), memberInfo: info };
+        var role;
+        if(via==='invite'){
+          role = (d.inviteEditors||[]).indexOf(email)>=0 ? 'editor' : 'viewer';
+          upd.inviteEmails = (d.inviteEmails||[]).filter(function(e){ return e!==email; });
+          upd.inviteEditors = (d.inviteEditors||[]).filter(function(e){ return e!==email; });
+        } else {
+          role = d.linkRole==='editor' ? 'editor' : 'viewer';
+        }
+        if(role==='editor') upd.editorUids = (d.editorUids||[]).concat([uid]);
+        else upd.viewerUids = (d.viewerUids||[]).concat([uid]);
+        tx.update(ref, upd);
+      });
+    }).then(function(){
+      if(id===cloudProjectId){ startPresence(); requestRender(); }
+    }, function(err){
+      alert('参加できませんでした（'+((err && err.code) || (err && err.message) || 'エラー')+'）');
+      throw err;
+    });
+  }
+
+  /* ---------- 共同編集：他のメンバーの変更を受け取る ---------- */
+  function attachCloudListener(){
+    if(cloudUnsub || !cfDb || !isSharedProject()) return;
+    var id = cloudProjectId;
+    cloudUnsub = cfDb.collection('projects').doc(id).onSnapshot({ includeMetadataChanges:true }, function(doc){
+      if(id!==cloudProjectId) return;
+      if(!doc.exists){
+        detachCloud();
+        ui.cloudError = 'deleted'; ui.screen = 'cloudError';
+        render();
+        return;
+      }
+      var data = doc.data();
+      cloudMeta = metaFrom(data);
+      applyCloudAccess();
+      if(!doc.metadata.hasPendingWrites){
+        var rev = data.rev || 0;
+        if(rev > cloudBaseRev){
+          if(data.updatedSession===SESSION_ID){
+            cloudBaseRev = rev;
+          } else {
+            var by = (data.updatedBy && data.updatedBy.name) || '他のメンバー';
+            if(ui.dirty && canEditCloud()){
+              /* 手元に未同期の変更がある間に他の人が保存した：どちらを残すか本人に選んでもらう */
+              ui.syncConflict = { state: data.state, rev: rev, by: by };
+            } else {
+              applyRemoteState(data.state, rev);
+              showToast(by + 'さんが変更しました');
+            }
+          }
+        }
+      }
+      requestRender();
+    }, function(err){
+      cloudUnsub = null;
+      if(id!==cloudProjectId) return;
+      if(err && err.code==='permission-denied'){
+        stopPresence(false);
+        ui.cloudError = 'denied'; ui.screen = 'cloudError';
+        render();
+      }
+    });
+  }
+  function applyRemoteState(remoteState, rev){
+    var keepScene = state.currentSceneId;
+    var keepSel = ui.selectedIds || [];
+    applyLoadedState(remoteState);
+    /* 表示中のシーンと選択は人ごとに違うので、手元のものを保つ */
+    if(keepScene && findScene(keepScene)) state.currentSceneId = keepScene;
+    var sc = currentScene();
+    ui.selectedIds = sc ? keepSel.filter(function(id){ return sc.presence && sc.presence[id]; }) : [];
+    cloudBaseRev = rev;
+    ui.undoStack = []; ui.redoStack = [];
+    ui.dirty = false; ui.syncConflict = null;
+  }
+  function resolveSyncConflict(useRemote){
+    var c = ui.syncConflict;
+    if(!c) return;
+    if(useRemote){
+      applyRemoteState(c.state, c.rev);
+      render();
+      showToast('最新の内容を読み込みました');
+    } else {
+      ui.syncConflict = null;
+      cloudBaseRev = c.rev;
+      render();
+      cloudSaveNow();
+    }
+  }
+
+  /* ---------- 共同編集：自分の変更を自動で保存する ---------- */
+  function scheduleCloudSave(){
+    if(!cfDb || !isSharedProject() || !canEditCloud()) return;
+    if(cloudSaveTimer) clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(cloudSaveNow, 1500);
+  }
+  function cloudSaveNow(){
+    if(cloudSaveTimer){ clearTimeout(cloudSaveTimer); cloudSaveTimer=null; }
+    if(!cfDb || !isSharedProject() || !canEditCloud() || ui.syncConflict || !ui.dirty) return;
+    if(cloudSaving){ cloudSaveTimer = setTimeout(cloudSaveNow, 800); return; }
+    var payload = cloudPayloadOrNull();
+    if(!payload){ ui.saveStatus='toolarge'; refreshSaveStatus(); return; }
+    var seq = dirtySeq, base = cloudBaseRev, id = cloudProjectId;
+    var ref = cfDb.collection('projects').doc(id);
+    var remote = null;
+    cloudSaving = true; ui.saveStatus='saving'; refreshSaveStatus();
+    /* 保存直前にrevを確かめ、他の人の保存を上書きしないようにする（楽観的ロック） */
+    cfDb.runTransaction(function(tx){
+      return tx.get(ref).then(function(snap){
+        var d = snap.data() || {};
+        if((d.rev||0)!==base){ remote = d; return; }
+        tx.update(ref, {
+          state: payload, title: payload.title || '', rev: base + 1,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: { uid: currentUser.uid, name: myInfo().name },
+          updatedSession: SESSION_ID
+        });
+      });
+    }).then(function(){
+      cloudSaving = false;
+      if(id!==cloudProjectId) return;
+      if(remote){
+        ui.syncConflict = { state: remote.state, rev: remote.rev||0, by: (remote.updatedBy && remote.updatedBy.name) || '他のメンバー' };
+        ui.saveStatus = 'idle';
+        requestRender();
+        return;
+      }
+      if(base + 1 > cloudBaseRev) cloudBaseRev = base + 1;
+      if(dirtySeq===seq) ui.dirty = false; else scheduleCloudSave();
+      ui.saveStatus = 'saved';
+      refreshSaveStatus();
+    }).catch(function(err){
+      cloudSaving = false;
+      if(id!==cloudProjectId) return;
+      ui.saveStatus = 'error';
+      refreshSaveStatus();
+      if(err && err.code==='permission-denied'){ applyCloudAccess(); requestRender(); return; }
+      /* 電波が悪いときなどは少し待って再試行する */
+      cloudSaveTimer = setTimeout(cloudSaveNow, 5000);
+    });
+  }
+
+  /* ---------- 在席表示（誰が同じプロジェクトを開いているか） ---------- */
+  function presenceCol(){ return cfDb.collection('projects').doc(cloudProjectId).collection('presence'); }
+  function startPresence(){
+    if(presenceTimer || !cfDb || !currentUser || !isSharedProject() || cloudRole()==='') return;
+    var beat = function(){
+      if(!cloudProjectId || !currentUser) return;
+      var me = myInfo();
+      presenceCol().doc(currentUser.uid).set({
+        name: me.name, photo: me.photo, sceneId: state.currentSceneId || '',
+        at: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(function(){});
+    };
+    beat();
+    presenceTimer = setInterval(function(){ beat(); refreshPresenceUI(); }, 25000);
+    presenceUnsub = presenceCol().onSnapshot(function(qs){
+      var myUid = currentUser ? currentUser.uid : '';
+      ui.presence = qs.docs.filter(function(d){ return d.id!==myUid; }).map(function(d){
+        var x = d.data();
+        return { uid:d.id, name:x.name, photo:x.photo, sceneId:x.sceneId, at: (x.at && x.at.toMillis) ? x.at.toMillis() : Date.now() };
+      });
+      refreshPresenceUI();
+    }, function(){});
+  }
+  function stopPresence(removeMine){
+    if(presenceTimer){ clearInterval(presenceTimer); presenceTimer=null; }
+    if(presenceUnsub){ presenceUnsub(); presenceUnsub=null; }
+    if(removeMine && cfDb && cloudProjectId && currentUser && isSharedProject()){
+      presenceCol().doc(currentUser.uid).delete().catch(function(){});
+    }
+    if(ui) ui.presence = [];
+  }
+  window.addEventListener('pagehide', function(){ stopPresence(true); });
+  function activePresence(){
+    var now = Date.now();
+    return (ui.presence||[]).filter(function(p){ return now - p.at < 70000; });
+  }
+  function renderPresenceAvatars(){
+    var list = activePresence();
+    if(!list.length) return '';
+    return '<div class="presence-avatars">' + list.slice(0,5).map(function(p){
+      var sc = findScene(p.sceneId);
+      return avatarHtml(p.name, p.photo, p.name + (sc ? '（シーン'+(sceneIndex(sc.id)+1)+'を表示中）' : '') + 'が開いています');
+    }).join('') + (list.length>5 ? '<span class="presence-more">+'+(list.length-5)+'</span>' : '') + '</div>';
+  }
+  function refreshPresenceUI(){
+    var el = document.getElementById('presenceSlot');
+    if(el) el.innerHTML = renderPresenceAvatars();
+  }
+
+  function detachCloud(){
+    if(cloudUnsub){ cloudUnsub(); cloudUnsub=null; }
+    stopPresence(false);
+    if(cloudSaveTimer){ clearTimeout(cloudSaveTimer); cloudSaveTimer=null; }
+    if(ui) ui.syncConflict = null;
+  }
+  function resetCloudContext(){
+    if(cloudProjectId) stopPresence(true);
+    detachCloud();
+    cloudProjectId = null; cloudMeta = null; cloudBaseRev = 0;
+    ui.isReadOnly = false;
+    try{ history.replaceState(null, '', window.location.pathname); }catch(e){}
+  }
+
+  /* ---------- 共有設定（オーナー）・退出 ---------- */
+  function updateSharing(upd, okMsg){
+    return cfDb.collection('projects').doc(cloudProjectId).update(upd).then(function(){
+      if(okMsg) showToast(okMsg);
+    }, function(err){
+      alert('共有設定を変更できませんでした（'+((err && err.code) || 'エラー')+'）');
+    });
+  }
+  function shareInvite(email, role){
+    email = String(email||'').trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ alert('メールアドレスの形式が正しくありません。'); return false; }
+    if(email===myEmailLower()){ alert('自分自身は招待できません。'); return false; }
+    var info = cloudMeta.memberInfo || {};
+    if(Object.keys(info).some(function(uid){ return (info[uid].email||'')===email; })){ alert('この人はすでにメンバーです。'); return false; }
+    var emails = (cloudMeta.inviteEmails||[]).filter(function(e){ return e!==email; }).concat([email]);
+    var editors = (cloudMeta.inviteEditors||[]).filter(function(e){ return e!==email; });
+    if(role==='editor') editors.push(email);
+    updateSharing({ inviteEmails: emails, inviteEditors: editors }, email + ' を招待しました');
+    return true;
+  }
+  function shareCancelInvite(email){
+    updateSharing({
+      inviteEmails: (cloudMeta.inviteEmails||[]).filter(function(e){ return e!==email; }),
+      inviteEditors: (cloudMeta.inviteEditors||[]).filter(function(e){ return e!==email; })
+    }, '招待を取り消しました');
+  }
+  function shareSetMemberRole(uid, role){
+    var editors = (cloudMeta.editorUids||[]).filter(function(u){ return u!==uid; });
+    var viewers = (cloudMeta.viewerUids||[]).filter(function(u){ return u!==uid; });
+    if(role==='editor') editors.push(uid); else viewers.push(uid);
+    updateSharing({ editorUids: editors, viewerUids: viewers }, '権限を変更しました');
+  }
+  function withoutMember(uid){
+    var info = Object.assign({}, cloudMeta.memberInfo||{});
+    delete info[uid];
+    var notU = function(u){ return u!==uid; };
+    return {
+      editorUids: (cloudMeta.editorUids||[]).filter(notU),
+      viewerUids: (cloudMeta.viewerUids||[]).filter(notU),
+      memberUids: (cloudMeta.memberUids||[]).filter(notU),
+      memberInfo: info
+    };
+  }
+  function shareRemoveMember(uid){
+    var who = ((cloudMeta.memberInfo||{})[uid] || {}).name || 'このメンバー';
+    if(!confirm(who + ' をこのプロジェクトから外しますか？')) return;
+    updateSharing(withoutMember(uid), who + ' を外しました');
+  }
+  function leaveProject(){
+    if(!confirm('このプロジェクトから抜けますか？\n抜けると、もう一度招待されるまで開けなくなります（リンク共有されている場合を除く）。')) return;
+    cfDb.collection('projects').doc(cloudProjectId).update(withoutMember(currentUser.uid)).then(function(){
+      removeProjectListEntry(cloudProjectId);
+      resetCloudContext();
+      ui.shareOpen = false; ui.cloudLists = null; ui.screen = 'home';
+      render();
+      showToast('プロジェクトから抜けました');
+    }, function(err){ alert('抜けられませんでした（'+((err && err.code) || 'エラー')+'）'); });
+  }
+  function deleteCloudProject(){
+    if(!confirm('「'+(state.title||'無題のプロジェクト')+'」をクラウドから削除しますか？\nメンバー全員が開けなくなり、元に戻せません。\n（この端末には作業中のデータとして残ります）')) return;
+    var id = cloudProjectId;
+    stopPresence(true);
+    cfDb.collection('projects').doc(id).delete().then(function(){
+      removeProjectListEntry(id);
+      resetCloudContext();
+      ui.shareOpen = false; ui.cloudLists = null; ui.screen = 'home';
+      render();
+      showToast('プロジェクトを削除しました');
+    }, function(err){ alert('削除できませんでした（'+((err && err.code) || 'エラー')+'）'); });
+  }
+  function inviteMailto(email, role){
+    var subject = '【CheerFlow】「'+(state.title||'構成')+'」に招待しました';
+    var body = 'CheerFlowの構成「'+(state.title||'')+'」に'+(ROLE_LABELS[role]||'メンバー')+'として招待しました。\n\n' +
+      '下のリンクを開いて、このメールアドレス（'+email+'）のGoogleアカウントでログインすると参加できます。\n\n' + shareUrl();
+    return 'mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   }
 
   var footerScrollLeft = 0;
@@ -651,7 +1430,9 @@
     contactPickOpen:false, contactPickIds:[],
     noteOpen:false, noteToolbarPos:null, noteLastColor:null,
     tutorial:null,
-    shareViewOpen:false, shareViewUrl:'', shareViewAudioStripped:false, shareViewLoading:false
+    shareViewOpen:false, shareViewUrl:'', shareViewAudioStripped:false, shareViewLoading:false,
+    shareOpen:false, accountMenuOpen:false, cloudLists:null, cloudListsLoading:false, cloudError:null,
+    syncConflict:null, presence:[], multiSelect:false
   };
 
   var TUTORIAL_STEPS = [
@@ -662,7 +1443,7 @@
     { title:'⑤ 名簿とフォーメーション', text:'名簿タブでメンバーの名前を入力し、配置タブでシーンごとにフォーメーションを組みましょう。スタンツはコマを複数選んで「スタンツ隊列」、タンブリングはコマを長押しして技を選択します。', selector:'.side-tab-btn[data-side-tab="roster"]' },
     { title:'⑥ カウント別メモ', text:'各シーンのカウントごとに動きや注意点を書き込みましょう。配置タブの「カウント別メモ」か、ノート機能を使うと全シーンを見渡しながら書き込めます。', selector:'#noteOpenBtn' },
     { title:'⑦ 通しで確認', text:'「プレビュー」で音源に合わせて通しで確認しましょう。', selector:'#previewBtn' },
-    { title:'⑧ 保存して共有', text:'問題がなければ「保存して共有」でクラウドに保存し、共有リンクを発行しましょう。お疲れ様でした、これでチュートリアルは終わりです！', selector:'#saveBtn' }
+    { title:'⑧ 共有', text:'Googleでログインしていれば変更は自動でクラウドに保存されます。「共有」からチームのメンバーを招待すると、一緒に編集できます。お疲れ様でした、これでチュートリアルは終わりです！', selector:'#shareBtn' }
   ];
 
   var AUDIO_PANEL_W_KEY = 'cheerflow_audio_panel_w';
@@ -936,7 +1717,7 @@
     render();
     if(sc && sc.startSec!=null) updateTimelineUI(sc.startSec, playbackDuration());
   }
-  function markDirty(){ ui.dirty = true; }
+  function markDirty(){ ui.dirty = true; dirtySeq++; scheduleCloudSave(); }
   function fmtTime(iso){
     if(!iso) return '未保存';
     try{
@@ -1427,14 +2208,21 @@
       wireProjectListEvents();
       return;
     }
-    if(ui.screen==='home' || !state.hasProject){
-      root.innerHTML = renderHomeScreen() + (ui.wizardOpen ? renderWizard() : '');
-      wireHomeEvents();
+    if(ui.screen==='cloudError'){
+      root.innerHTML = renderCloudErrorScreen();
+      wireCloudUiEvents();
       positionYtPortal();
       return;
     }
-    var readonlyBanner = ui.isReadOnly ?
-      '<div class="readonly-banner">この共有リンクは閲覧専用です。表示中の変更はこの端末にのみ反映され、保存はされません。編集を反映するにはオーナーに依頼してください。</div>' : '';
+    if(ui.screen==='home' || !state.hasProject){
+      root.innerHTML = renderHomeScreen() + (ui.wizardOpen ? renderWizard() : '');
+      wireHomeEvents();
+      wireCloudUiEvents();
+      positionYtPortal();
+      if(currentUser && !ui.cloudLists && !ui.cloudListsLoading) loadCloudLists();
+      return;
+    }
+    var readonlyBanner = renderEditorBanners();
 
     var prevFooter = document.querySelector('.footer-strip');
     if(prevFooter) footerScrollLeft = prevFooter.scrollLeft;
@@ -1458,10 +2246,12 @@
       (ui.boardPopover ? renderBoardPopover() : '') +
       (ui.contactPickOpen ? renderContactSheetPicker() : '') +
       (ui.shareViewOpen ? renderShareViewModal() : '') +
+      (ui.shareOpen ? renderShareModal() : '') +
       (ui.noteOpen ? renderNoteOverlay() : '') +
       (ui.present ? renderPresentOverlay() : '');
 
     wireEvents();
+    wireCloudUiEvents();
     if(ui.present) wirePresentEvents();
     positionYtPortal();
     fitStageFrame();
@@ -1525,6 +2315,13 @@
 
   function saveStatusText(){
     if(ui.isReadOnly) return '閲覧専用';
+    if(isSharedProject()){
+      if(ui.syncConflict) return '同時編集の確認待ち';
+      if(ui.saveStatus==='saving') return '同期中…';
+      if(ui.saveStatus==='error') return '同期できていません（自動で再試行します）';
+      if(ui.saveStatus==='toolarge') return '音声ファイルが大きすぎて同期できません（YouTube推奨）';
+      return ui.dirty ? '同期待ち…' : 'クラウドと同期済み';
+    }
     if(hasArtifactApi){
       if(ui.saveStatus==='saving') return '保存中…';
       if(ui.saveStatus==='saved') return '保存済み・'+fmtTime(state.updatedAt);
@@ -1544,13 +2341,26 @@
   }
 
   /* ---------------- Home screen ---------------- */
+  function lastCloudIdStored(){ try{ return localStorage.getItem(LAST_CLOUD_KEY) || ''; }catch(e){ return ''; } }
+  /* この端末にしか保存されていない（クラウドのプロジェクトではない）作業中のプロジェクトがあるか */
+  function hasLocalOnlyProject(){ return state.hasProject && !cloudProjectId && !lastCloudIdStored(); }
   function renderHomeScreen(){
+    if(currentUser) return renderAccountHome();
     var hasProject = state.hasProject;
     var listCount = loadProjectList().length;
     var subtitle = hasProject ? escapeHtml(state.title||'無題のプロジェクト')+' ・ 全'+state.scenes.length+'シーン'
       : (listCount ? '保存済みのプロジェクトが'+listCount+'件あります' : 'まだプロジェクトがありません');
+    var loginCard = cfAuth ?
+      '<div class="home-login-card">' +
+        '<div><h2>Googleでログイン</h2>' +
+        '<p>プロジェクトをアカウントに保存して、タブレットやスマホなどどの端末からでも開けます。チームのメンバーを招待して共有・共同編集もできます。</p></div>' +
+        '<button class="btn primary" data-act="auth-signin">Googleでログイン</button>' +
+        renderDevSignIn() +
+      '</div>' +
+      '<p class="home-local-caption">ログインせずに使う（この端末にだけ保存されます）</p>' : '';
     return '<div class="home-screen">' +
       '<div><div class="home-brand">Cheer<em>Flow</em></div></div>' +
+      loginCard +
       '<div class="home-actions">' +
         '<button class="home-card" id="homeEditBtn" '+(hasProject||listCount?'':'disabled')+'>' +
           '<h2>プロジェクトを開く</h2>' +
@@ -1563,6 +2373,76 @@
       '</div>' +
       '<button class="home-tutorial-link" id="homeTutorialBtn">📖 チュートリアルを見る</button>' +
     '</div>';
+  }
+  function renderDevSignIn(){
+    if(!USE_EMULATORS) return '';
+    return '<div class="dev-signin"><span>開発用ログイン（エミュレーター）</span>' +
+      '<input type="email" id="devSignInEmail" placeholder="test@example.com"><button class="btn small" data-act="dev-signin">ログイン</button></div>';
+  }
+  function fmtShortDate(ms){
+    if(!ms) return '';
+    var d = new Date(ms);
+    return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate();
+  }
+  function renderAccountHome(){
+    var me = myInfo();
+    var lists = ui.cloudLists;
+    var top = '<div class="dash-top"><div class="home-brand">Cheer<em>Flow</em></div>' +
+      '<div class="dash-account">' + avatarHtml(me.name, me.photo) +
+        '<div class="dash-account-text"><span>'+escapeHtml(me.name)+'</span><small>'+escapeHtml(me.email)+'</small></div>' +
+        '<button class="btn small ghost" data-act="auth-signout">ログアウト</button></div></div>';
+    var actions = '<div class="dash-actions">' +
+      '<button class="btn primary" id="homeNewBtn">＋ 新規プロジェクトを作成</button>' +
+      '<button class="home-tutorial-link" id="homeTutorialBtn">📖 チュートリアルを見る</button></div>';
+    var invites = '';
+    if(lists && lists.invites.length){
+      invites = '<section class="dash-section"><h2>招待されているプロジェクト</h2><div class="project-list">' +
+        lists.invites.map(function(p){
+          return '<div class="project-list-row invite-row">' +
+            '<div class="project-list-open static"><span class="project-list-title">'+escapeHtml(p.title)+'</span>' +
+            '<span class="project-list-date">'+escapeHtml(p.ownerName||'オーナー')+'さんから・'+ROLE_LABELS[p.inviteRole]+'として招待</span></div>' +
+            '<button class="btn small primary" data-act="accept-invite" data-id="'+p.id+'">参加する</button></div>';
+        }).join('') + '</div></section>';
+    }
+    var mine;
+    if(!lists){
+      mine = '<p class="empty-hint">読み込み中…</p>';
+    } else if(lists.error){
+      mine = '<p class="empty-hint">プロジェクト一覧を読み込めませんでした（'+escapeHtml(lists.error)+'）。通信状況を確認して、ページを再読み込みしてください。</p>';
+    } else if(!lists.mine.length){
+      mine = '<p class="empty-hint">まだアカウントに保存されたプロジェクトはありません。「新規プロジェクトを作成」から始めるか、下の「この端末のプロジェクト」をアカウントに保存してください。</p>';
+    } else {
+      mine = '<div class="project-list">' + lists.mine.map(function(p){
+        var shared = p.memberCount>1 || p.linkRole!=='none';
+        return '<div class="project-list-row">' +
+          '<button class="project-list-open" data-act="open-cloud-project" data-id="'+p.id+'">' +
+            '<span class="project-list-title">'+escapeHtml(p.title)+'</span>' +
+            '<span class="project-list-date">' +
+              '<span class="role-pill role-'+p.role+'">'+(ROLE_LABELS[p.role]||'')+'</span>' +
+              (p.role!=='owner' && p.ownerName ? escapeHtml(p.ownerName)+'さんのプロジェクト・' : '') +
+              p.sceneCount+'シーン' + (shared ? '・'+p.memberCount+'人で共有' : '') +
+              (p.updatedMs ? '・'+fmtShortDate(p.updatedMs)+'更新' : '') +
+            '</span>' +
+          '</button></div>';
+      }).join('') + '</div>';
+    }
+    var mineIds = lists ? lists.mine.map(function(p){ return p.id; }) : [];
+    var localRows = [];
+    if(hasLocalOnlyProject()){
+      localRows.push('<div class="project-list-row">' +
+        '<button class="project-list-open" data-act="open-local-project"><span class="project-list-title">'+escapeHtml(state.title||'無題のプロジェクト')+'</span>' +
+        '<span class="project-list-date">この端末だけに保存・'+state.scenes.length+'シーン</span></button>' +
+        '<button class="btn small" data-act="cloud-save-local">アカウントに保存</button></div>');
+    }
+    loadProjectList().filter(function(p){ return mineIds.indexOf(p.id)<0; }).forEach(function(p){
+      localRows.push('<div class="project-list-row">' +
+        '<button class="project-list-open" data-act="open-cloud-project" data-id="'+p.id+'"><span class="project-list-title">'+escapeHtml(p.title||'無題のプロジェクト')+'</span>' +
+        '<span class="project-list-date">以前の共有リンクで開いたプロジェクト（開くとアカウントに追加できます）</span></button>' +
+        '<button class="btn small ghost icon" data-act="remove-project-entry" data-id="'+p.id+'" title="一覧から削除（データ自体は消えません）">×</button></div>');
+    });
+    var local = localRows.length ? '<section class="dash-section"><h2>この端末のプロジェクト</h2><div class="project-list">'+localRows.join('')+'</div></section>' : '';
+    return '<div class="home-screen home-dashboard">' + top + actions + invites +
+      '<section class="dash-section"><h2>マイプロジェクト</h2>'+mine+'</section>' + local + '</div>';
   }
 
   function renderProjectListScreen(){
@@ -1626,6 +2506,7 @@
   }
 
   function createProject(opts){
+    resetCloudContext();
     var n = Math.max(1, Math.min(60, opts.memberCount||8));
     var members = [];
     for(var i=1;i<=n;i++){ members.push({ id:uid('m'), name:'メンバー'+i, part:PART_ORDER[0], color:nextKomaColor(i-1) }); }
@@ -1647,6 +2528,7 @@
     if(state.audio.dataUrl) AUDIO_EL.src = state.audio.dataUrl;
     ui.selectedIds=[]; ui.undoStack=[]; ui.redoStack=[]; ui.screen='editor';
     markDirty(); render();
+    if(currentUser && cfDb) saveLocalProjectToAccount();
   }
 
   function wireHomeEvents(){
@@ -1655,14 +2537,25 @@
     if(editBtn) editBtn.addEventListener('click', function(){
       if(state.hasProject){
         if(confirm('作業中のプロジェクトがあります。続きから開始しますか？')){
+          /* 最後に開いていたのがクラウドのプロジェクトなら、手元のコピーではなくクラウド版を開く */
+          var lastId = !cloudProjectId && lastCloudIdStored();
+          if(lastId){ openCloudProject(lastId); return; }
           ui.screen='editor'; render(); return;
         }
       }
       if(loadProjectList().length){ ui.screen='projectList'; render(); }
     });
+    onAll('[data-act="open-local-project"]','click', function(){ resetCloudContext(); ui.screen='editor'; render(); });
+    onAll('[data-act="remove-project-entry"]','click', function(e){
+      e.stopPropagation();
+      removeProjectListEntry(this.getAttribute('data-id'));
+      render();
+    });
     var newBtn = document.getElementById('homeNewBtn');
     if(newBtn) newBtn.addEventListener('click', function(){
-      if(state.hasProject && !confirm('既存のプロジェクトを新しいプロジェクトで置き換えます。よろしいですか？')) return;
+      if(hasLocalOnlyProject() && !confirm(currentUser ?
+        'この端末だけに保存されているプロジェクト「'+(state.title||'無題')+'」は、新しいプロジェクトを作ると消えます。先に「アカウントに保存」しておくことをおすすめします。\n\nこのまま新しいプロジェクトを作成しますか？' :
+        '既存のプロジェクトを新しいプロジェクトで置き換えます。よろしいですか？')) return;
       ui.wizardOpen=true; ui.wizardAudioSrc='file'; ui.wizardFileStaged=null;
       ui.wizardTitle=''; ui.wizardCount=8; ui.wizardYtUrl='';
       render();
@@ -1765,9 +2658,238 @@
       '</div>' +
       '<button class="btn small" id="noteOpenBtn">ノート</button>' +
       '<button class="btn small'+(ui.sidebarOpen?' on':'')+'" id="menuTabBtn">メニュー</button>' +
-      '<button class="btn small primary" id="saveBtn" type="button" '+(ui.isReadOnly?'disabled':'')+'>'+((hasArtifactApi||cfDb)?'保存して共有':'保存')+'</button>' +
+      (hasArtifactApi ?
+        '<button class="btn small primary" id="saveBtn" type="button" '+(ui.isReadOnly?'disabled':'')+'>保存して共有</button>' :
+        '<span id="presenceSlot">'+renderPresenceAvatars()+'</span>' +
+        /* 共同編集中（アカウントのプロジェクト）は自動で同期するので保存ボタンは出さない */
+        (isSharedProject() ? '' : '<button class="btn small" id="saveBtn" type="button" '+(ui.isReadOnly?'disabled':'')+' title="'+(currentUser?'アカウントに保存します':'この端末に保存します')+'">保存</button>') +
+        (cfDb ? '<button class="btn small primary" id="shareBtn" type="button">共有</button>' : '') +
+        renderAccountChip()) +
     '</header>';
   }
+  function renderAccountChip(){
+    if(!cfAuth) return '';
+    if(!currentUser) return '<button class="btn small ghost" data-act="auth-signin">ログイン</button>';
+    var me = myInfo();
+    return '<div class="account-wrap">' +
+      '<button type="button" class="account-chip" id="accountChipBtn">'+avatarHtml(me.name, me.photo, me.name+'（'+me.email+'）')+'</button>' +
+      (ui.accountMenuOpen ?
+        '<div class="account-menu">' +
+          '<div class="account-menu-name">'+escapeHtml(me.name)+'</div>' +
+          '<div class="account-menu-email">'+escapeHtml(me.email)+'</div>' +
+          '<button type="button" data-act="go-home">ホーム（プロジェクト一覧）</button>' +
+          '<button type="button" data-act="auth-signout">ログアウト</button>' +
+        '</div>' : '') +
+    '</div>';
+  }
+
+  /* ---------------- 共有・共同編集まわりの画面 ---------------- */
+  function renderEditorBanners(){
+    var out = [];
+    if(ui.syncConflict){
+      out.push('<div class="readonly-banner conflict-banner"><span>'+escapeHtml(ui.syncConflict.by)+'さんが同じプロジェクトを同時に編集しました。どちらの内容を残しますか？</span>' +
+        '<button class="btn small" data-act="conflict-remote">相手の変更を読み込む</button>' +
+        '<button class="btn small primary" data-act="conflict-mine">自分の変更で上書き</button></div>');
+    }
+    var role = cloudRole();
+    if(role==='legacy'){
+      if(currentUser && cfDb){
+        out.push('<div class="readonly-banner"><span>このプロジェクトはリンクを知っている人なら誰でも編集できる状態です。アカウントに追加すると、招待したメンバーだけで管理できます。</span>' +
+          '<button class="btn small primary" data-act="cloud-claim">自分のアカウントに追加</button></div>');
+      }
+    } else if(isSharedProject()){
+      if(role===''){
+        if(isInvitedHere()){
+          out.push('<div class="readonly-banner"><span>このプロジェクトに'+(ROLE_LABELS[(cloudMeta.inviteEditors||[]).indexOf(myEmailLower())>=0?'editor':'viewer'])+'として招待されています。</span>' +
+            '<button class="btn small primary" data-act="join-invite">参加する</button></div>');
+        } else if(!currentUser && cloudMeta.linkRole==='editor'){
+          out.push('<div class="readonly-banner"><span>閲覧のみ表示しています。編集するにはGoogleでログインしてください。</span>' +
+            '<button class="btn small primary" data-act="auth-signin">Googleでログイン</button></div>');
+        } else if(currentUser && cloudMeta.linkRole==='viewer'){
+          out.push('<div class="readonly-banner"><span>リンクで共有されたプロジェクトを閲覧しています（編集はできません）。</span>' +
+            '<button class="btn small" data-act="join-link">マイプロジェクトに追加</button></div>');
+        } else {
+          out.push('<div class="readonly-banner"><span>リンクで共有されたプロジェクトを閲覧しています（編集はできません）。</span>' +
+            (currentUser ? '' : '<button class="btn small" data-act="auth-signin">Googleでログイン</button>') + '</div>');
+        }
+      } else if(role==='viewer'){
+        out.push('<div class="readonly-banner"><span>閲覧者として参加しています。編集するにはオーナーに編集者への変更を依頼してください。</span></div>');
+      }
+    } else if(ui.isReadOnly){
+      out.push('<div class="readonly-banner">この共有リンクは閲覧専用です。表示中の変更はこの端末にのみ反映され、保存はされません。編集を反映するにはオーナーに依頼してください。</div>');
+    }
+    return out.join('');
+  }
+
+  function renderCloudErrorScreen(){
+    var msg, actions = '';
+    if(ui.cloudError==='denied'){
+      msg = currentUser ?
+        'このプロジェクトを開く権限がありません。<br>オーナーに招待してもらうか、招待されたメールアドレスのGoogleアカウントでログインし直してください。<br><span class="empty-hint">現在のアカウント：'+escapeHtml(myInfo().email)+'</span>' :
+        'このプロジェクトは招待されたメンバーだけが開けます。<br>招待されたメールアドレスのGoogleアカウントでログインしてください。';
+      actions = currentUser ?
+        '<button class="btn" data-act="auth-signout">別のアカウントでログインし直す</button>' :
+        '<button class="btn primary" data-act="auth-signin">Googleでログイン</button>';
+    } else if(ui.cloudError==='deleted'){
+      msg = 'このプロジェクトはオーナーによって削除されました。';
+    } else {
+      msg = 'プロジェクトを読み込めませんでした。通信状況を確認して、もう一度お試しください。';
+      actions = '<button class="btn primary" data-act="cloud-retry">再読み込み</button>';
+    }
+    return '<div class="home-screen"><div class="home-brand">Cheer<em>Flow</em></div>' +
+      '<p class="cloud-error-msg">'+msg+'</p>' +
+      '<div class="home-actions" style="gap:10px;">'+actions+'<button class="btn" data-act="go-home">ホームへ</button></div></div>';
+  }
+
+  function renderShareModal(){
+    var role = cloudRole();
+    var body;
+    if(!currentUser){
+      body = '<p>チームでの共有・共同編集には、Googleアカウントでのログインが必要です。</p>' +
+        '<ul class="share-points"><li>プロジェクトがアカウントに保存され、どの端末からでも開けます</li><li>メールアドレスでメンバーを招待し、編集者・閲覧者を分けられます</li><li>メンバーの変更は自動で全員の画面に反映されます</li></ul>' +
+        '<button class="btn primary" data-act="auth-signin">Googleでログイン</button>' +
+        (role==='legacy' ? '<p class="empty-hint">このプロジェクトは以前の方式（リンクを知っている人は誰でも編集可）で共有されています。今のリンクは引き続き使えます。</p>' + shareLinkRow(true) : '');
+    } else if(role==='local'){
+      body = '<p>このプロジェクトはまだこの端末にしか保存されていません。</p>' +
+        '<button class="btn primary" data-act="cloud-save-local">アカウントに保存して共有を始める</button>';
+    } else if(role==='legacy'){
+      body = '<p>このプロジェクトは以前の方式（リンクを知っている人は誰でも編集可）で共有されています。</p>' +
+        '<p class="empty-hint">アカウントに追加すると、あなたがオーナーになり、メンバーの招待・権限の管理ができるようになります。</p>' +
+        '<button class="btn primary" data-act="cloud-claim">自分のアカウントに追加</button>' + shareLinkRow(true);
+    } else {
+      body = renderShareBody(role);
+    }
+    return '<div class="modal-backdrop" id="shareBackdrop"><div class="modal-box share-box" role="dialog" aria-label="共有">' +
+      '<div class="share-head"><h2>共有</h2><button type="button" class="btn small ghost icon" data-act="share-close">✕</button></div>' +
+      body + '</div></div>';
+  }
+  function shareLinkRow(legacyLink){
+    var url = legacyLink ? (location.origin + location.pathname + '?p=' + cloudProjectId) : shareUrl();
+    return '<div class="share-link-row"><input type="text" readonly id="shareUrlInput" value="'+escapeHtml(url)+'">' +
+      '<button type="button" class="btn small" data-act="share-copy">コピー</button>' +
+      (navigator.share ? '<button type="button" class="btn small" data-act="share-native">送る</button>' : '') + '</div>';
+  }
+  function renderShareBody(role){
+    var isOwner = role==='owner';
+    var m = cloudMeta;
+    var info = m.memberInfo || {};
+    var out = [];
+    out.push('<div class="share-section"><div class="share-label">リンク</div>' +
+      (isOwner ?
+        '<select id="linkRoleSelect">' + ['none','viewer','editor'].map(function(k){
+          return '<option value="'+k+'" '+(m.linkRole===k?'selected':'')+'>'+LINK_ROLE_LABELS[k]+'</option>';
+        }).join('') + '</select>' :
+        '<p class="share-current">'+escapeHtml(LINK_ROLE_LABELS[m.linkRole||'none'])+'</p>') +
+      shareLinkRow(false) +
+      '<p class="empty-hint">'+(m.linkRole==='none' ? '招待したメンバーだけがこのリンクで開けます。' :
+        m.linkRole==='viewer' ? 'このリンクを知っている人は誰でも閲覧できます（編集はメンバーのみ）。' :
+        'このリンクを開いてGoogleログインした人は、編集者として自動でメンバーに追加されます。')+'</p></div>');
+    if(isOwner){
+      out.push('<div class="share-section"><div class="share-label">メンバーを招待</div>' +
+        '<div class="share-invite-row">' +
+          '<input type="email" id="inviteEmailInput" placeholder="招待する人のメールアドレス（Googleアカウント）" autocomplete="off">' +
+          '<select id="inviteRoleSelect"><option value="editor">編集者</option><option value="viewer">閲覧者</option></select>' +
+          '<button type="button" class="btn small primary" data-act="share-invite">招待</button>' +
+        '</div>' +
+        '<p class="empty-hint">招待した人がリンクを開き、そのメールアドレスのGoogleアカウントでログインすると参加できます。通知メールは自動では送られないので、「メールで知らせる」やLINEなどでリンクを伝えてください。</p></div>');
+    }
+    var uids = (m.memberUids||[]).slice().sort(function(a,b){
+      if(a===m.ownerUid) return -1; if(b===m.ownerUid) return 1;
+      return String((info[a]||{}).name||'').localeCompare(String((info[b]||{}).name||''), 'ja');
+    });
+    var rows = uids.map(function(uid){
+      var p = info[uid] || {};
+      var r = uid===m.ownerUid ? 'owner' : (m.editorUids||[]).indexOf(uid)>=0 ? 'editor' : 'viewer';
+      var isMe = currentUser && uid===currentUser.uid;
+      var roleCtl = (isOwner && r!=='owner') ?
+        '<select data-act="member-role" data-uid="'+uid+'"><option value="editor" '+(r==='editor'?'selected':'')+'>編集者</option><option value="viewer" '+(r==='viewer'?'selected':'')+'>閲覧者</option></select>' +
+        '<button type="button" class="btn small ghost icon" data-act="member-remove" data-uid="'+uid+'" title="メンバーから外す">✕</button>' :
+        '<span class="share-role">'+ROLE_LABELS[r]+'</span>';
+      return '<div class="share-member">' + avatarHtml(p.name, p.photo) +
+        '<div class="share-member-text"><span>'+escapeHtml(p.name||'名前未設定')+(isMe?'（あなた）':'')+'</span><small>'+escapeHtml(p.email||'')+'</small></div>' +
+        roleCtl + '</div>';
+    });
+    (m.inviteEmails||[]).forEach(function(email){
+      var r = (m.inviteEditors||[]).indexOf(email)>=0 ? 'editor' : 'viewer';
+      rows.push('<div class="share-member pending">' + avatarHtml(email) +
+        '<div class="share-member-text"><span>'+escapeHtml(email)+'</span><small>招待中・'+ROLE_LABELS[r]+'</small></div>' +
+        (isOwner ?
+          '<a class="btn small ghost" href="'+escapeHtml(inviteMailto(email, r))+'">メールで知らせる</a>' +
+          '<button type="button" class="btn small ghost icon" data-act="invite-cancel" data-email="'+escapeHtml(email)+'" title="招待を取り消す">✕</button>' : '') +
+      '</div>');
+    });
+    out.push('<div class="share-section"><div class="share-label">メンバー（'+uids.length+'人'+((m.inviteEmails||[]).length ? '・招待中'+(m.inviteEmails||[]).length+'人' : '')+'）</div>' +
+      '<div class="share-members">'+rows.join('')+'</div>' +
+      '<p class="empty-hint">編集者の変更は自動で全員の画面に反映されます。同じ時間に同じプロジェクトを編集して内容がぶつかった場合は、どちらを残すか確認が出ます。</p></div>');
+    out.push('<div class="share-foot">' + (isOwner ?
+      '<button type="button" class="btn small danger ghost" data-act="cloud-delete">プロジェクトを削除</button>' :
+      (role ? '<button type="button" class="btn small danger ghost" data-act="cloud-leave">このプロジェクトから抜ける</button>' : '')) +
+    '</div>');
+    return out.join('');
+  }
+
+  /* 共有・アカウント・バナーのボタン（エディタとホームの両方で使う） */
+  function wireCloudUiEvents(){
+    onAll('[data-act="auth-signin"]','click', function(){ signInWithGoogle(); });
+    onAll('[data-act="auth-signout"]','click', function(){ ui.accountMenuOpen=false; signOutUser(); });
+    onAll('[data-act="go-home"]','click', function(){
+      ui.accountMenuOpen=false; ui.shareOpen=false;
+      if(ui.screen==='cloudError'){ resetCloudContext(); }
+      ui.screen='home'; ui.cloudLists=null; render();
+    });
+    on('accountChipBtn','click', function(e){ e.stopPropagation(); ui.accountMenuOpen=!ui.accountMenuOpen; render(); });
+    on('shareBtn','click', function(){ ui.shareOpen=true; ui.exportMenuOpen=false; render(); });
+    onAll('[data-act="share-close"]','click', function(){ ui.shareOpen=false; render(); });
+    var backdrop = document.getElementById('shareBackdrop');
+    if(backdrop) backdrop.addEventListener('click', function(e){ if(e.target===backdrop){ ui.shareOpen=false; render(); } });
+    onAll('[data-act="cloud-save-local"]','click', function(){ saveLocalProjectToAccount(); });
+    onAll('[data-act="cloud-claim"]','click', function(){ claimLegacyProject(); });
+    onAll('[data-act="cloud-retry"]','click', function(){ if(cloudProjectId) loadCloudProject(true); });
+    onAll('[data-act="cloud-leave"]','click', function(){ leaveProject(); });
+    onAll('[data-act="cloud-delete"]','click', function(){ deleteCloudProject(); });
+    onAll('[data-act="join-invite"]','click', function(){ joinProject('invite', cloudProjectId).then(function(){ showToast('参加しました'); }, function(){}); });
+    onAll('[data-act="join-link"]','click', function(){ joinProject('link', cloudProjectId).then(function(){ showToast('マイプロジェクトに追加しました'); }, function(){}); });
+    onAll('[data-act="conflict-remote"]','click', function(){ resolveSyncConflict(true); });
+    onAll('[data-act="conflict-mine"]','click', function(){ resolveSyncConflict(false); });
+    on('linkRoleSelect','change', function(){ updateSharing({ linkRole:this.value }, 'リンクの設定を変更しました'); });
+    onAll('[data-act="share-invite"]','click', function(){
+      var input = document.getElementById('inviteEmailInput');
+      var roleSel = document.getElementById('inviteRoleSelect');
+      if(input && shareInvite(input.value, roleSel ? roleSel.value : 'editor')) input.value = '';
+    });
+    on('inviteEmailInput','keydown', function(e){
+      if(e.key==='Enter'){ e.preventDefault(); var b = document.querySelector('[data-act="share-invite"]'); if(b) b.click(); }
+    });
+    onAll('[data-act="invite-cancel"]','click', function(){ shareCancelInvite(this.getAttribute('data-email')); });
+    onAll('[data-act="member-role"]','change', function(){ shareSetMemberRole(this.getAttribute('data-uid'), this.value); });
+    onAll('[data-act="member-remove"]','click', function(){ shareRemoveMember(this.getAttribute('data-uid')); });
+    onAll('[data-act="share-copy"]','click', function(){
+      var input = document.getElementById('shareUrlInput');
+      if(!input) return;
+      var done = function(){ showToast('リンクをコピーしました'); };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(input.value).then(done, function(){ input.select(); });
+      else { input.select(); try{ document.execCommand('copy'); done(); }catch(e){} }
+    });
+    onAll('[data-act="share-native"]','click', function(){
+      var input = document.getElementById('shareUrlInput');
+      if(input && navigator.share) navigator.share({ title:(state.title||'CheerFlow')+' - CheerFlow', url:input.value }).catch(function(){});
+    });
+    onAll('[data-act="open-cloud-project"]','click', function(){ openCloudProject(this.getAttribute('data-id')); });
+    onAll('[data-act="accept-invite"]','click', function(){
+      var id = this.getAttribute('data-id');
+      this.disabled = true;
+      joinProject('invite', id).then(function(){ openCloudProject(id); }, function(){ ui.cloudLists=null; render(); });
+    });
+    onAll('[data-act="dev-signin"]','click', function(){
+      var input = document.getElementById('devSignInEmail');
+      devSignIn(input ? input.value.trim() : '');
+    });
+  }
+  document.addEventListener('pointerdown', function(e){
+    if(!ui.accountMenuOpen) return;
+    if(e.target.closest && e.target.closest('.account-wrap')) return;
+    ui.accountMenuOpen = false; render();
+  });
 
   /* ---------------- Audio panel (left) ---------------- */
   function renderTimeline(cur, dur, leftExtra){
@@ -1936,6 +3058,9 @@
           '<div class="stage-scene-title">'+(sceneIndex(sc.id)+1)+'. '+escapeHtml(sc.name||'無題のシーン')+'</div>'+
           '<button type="button" class="viewpoint-toggle" id="audienceToggleBtn" title="客席の向きを切り替え">'+
             '⇅ '+(audienceAtTop?'演者視点':'観客視点')+
+          '</button>'+
+          '<button type="button" class="multisel-toggle'+(ui.multiSelect?' on':'')+'" id="multiSelectToggle" title="オンにすると、タップしたコマを選択に追加・解除できます（Shift＋クリックと同じ）">'+
+            (ui.multiSelect?'✓ 複数選択中':'複数選択')+
           '</button>'+
         '</div>' +
         countPanel +
@@ -2941,6 +4066,7 @@
       resizer.addEventListener('pointercancel', function(){ dragging=false; resizer.classList.remove('active'); });
     })();
     on('audioPlayBtn','click', function(){ playbackTogglePlay(); });
+    on('multiSelectToggle','click', function(){ ui.multiSelect = !ui.multiSelect; render(); });
     on('audienceToggleBtn','click', function(){
       pushHistory();
       state.stage.audienceAtTop = !state.stage.audienceAtTop;
@@ -3375,7 +4501,7 @@
       var sc = currentScene();
       if(el){
         var id = el.getAttribute('data-member-id');
-        if(e.shiftKey){
+        if(e.shiftKey || ui.multiSelect){
           var i = ui.selectedIds.indexOf(id);
           if(i>=0) ui.selectedIds.splice(i,1); else ui.selectedIds.push(id);
           render();
@@ -3641,8 +4767,20 @@
       }, function(){ ui.saveStatus='unavailable'; render(); });
       return;
     }
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+    try{
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      localStorage.setItem(LAST_CLOUD_KEY, cloudProjectId || '');
+    }catch(e){}
     if(!cfDb){ ui.dirty=false; render(); return; }
+    /* アカウントのプロジェクトは自動同期。ボタンからは今すぐ同期するだけ */
+    if(isSharedProject()){ cloudSaveNow(); return; }
+    if(!cloudProjectId){
+      /* 新しいクラウドプロジェクトはログインしたアカウントのものとして作る（旧方式の作成はルールで禁止） */
+      if(currentUser){ saveLocalProjectToAccount(); return; }
+      ui.dirty=false; ui.saveStatus='saved'; render();
+      return;
+    }
+    /* ここから下は旧方式（リンクを知っていれば誰でも編集可）のプロジェクトへの上書き保存 */
     state.updatedAt = new Date().toISOString();
     var payload;
     try{ payload = JSON.parse(JSON.stringify(state)); }catch(e){ payload = null; }
@@ -3651,20 +4789,11 @@
       return;
     }
     ui.saveStatus='saving'; render();
-    var isNew = !cloudProjectId;
-    var docId = cloudProjectId || cfDb.collection('projects').doc().id;
+    var docId = cloudProjectId;
     cfDb.collection('projects').doc(docId).set({
       state: payload,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(function(){
-      cloudProjectId = docId;
-      if(isNew){
-        try{
-          var url = new URL(window.location.href);
-          url.searchParams.set('p', docId);
-          history.replaceState(null, '', url.toString());
-        }catch(e){}
-      }
       upsertProjectListEntry(docId, state.title);
       ui.dirty=false; ui.saveStatus='saved'; render();
     }).catch(function(){
@@ -3717,23 +4846,18 @@
       render();
     });
   } else if(cloudProjectId && cfDb){
+    /* 招待制のプロジェクトはログイン状態で読み込む必要があるため、保存済みのログイン情報の復元を待つ */
     root.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted)">読み込み中…</div>';
-    cfDb.collection('projects').doc(cloudProjectId).get().then(function(doc){
-      if(doc.exists && doc.data() && doc.data().state){
-        applyLoadedState(doc.data().state);
-        upsertProjectListEntry(cloudProjectId, state.title);
-        ui.screen = 'editor';
-      } else {
-        cloudProjectId = null;
-        try{ history.replaceState(null, '', window.location.pathname); }catch(e){}
-      }
-      render();
-    }).catch(function(){
-      cloudProjectId = null;
-      render();
-    });
+    whenAuthReady(function(){ loadCloudProject(true); });
   } else {
-    render();
+    if(!authResolved) root.innerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text-muted)">読み込み中…</div>';
+    whenAuthReady(render);
+  }
+  if(migratedAudioStripped) showToast('以前のURLから引き継ぎました。音声ファイルは容量の都合で引き継げなかったため、もう一度アップロードしてください。');
+
+  /* ホーム画面に追加してアプリとして使えるようにする（Claude Artifact内やfile://では登録しない） */
+  if('serviceWorker' in navigator && !hasArtifactApi && (location.protocol==='https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))){
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
   }
 })();
 </script>
