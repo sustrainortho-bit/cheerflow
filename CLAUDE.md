@@ -52,6 +52,7 @@ tests/rules.test.mjs   # ルールのテスト（npm run test:rules）
 - `firebase.json`の`hosting.ignore`で、md・ルール・tests・tools・node_modules等は公開しない
   - **注意**：`**/.*`だけでは`.git`フォルダの中身が除外されず、初回デプロイで`.git`が約2分間公開されてしまった（認証情報は含まれておらず、内容は公開済みのGitHubリポジトリと同じ）。`**/.*/**`を追加して修正済み。**デプロイ後は`.firebase/hosting..cache`で公開ファイルが8件（cheerflow.html・index.html・sw.js・manifest・icons4件）だけであることを確認すること**
 - **Firebase Hostingで配信しているときは`authDomain`をそのホスト名にしている**（ログイン処理`/__/auth/handler`をアプリと同一ドメインで行う。別ドメインだとiPad Safariのストレージ分離で画面遷移ログインが失敗する）
+  - そのため、Google CloudのOAuthクライアント「Web client (auto created by Google Service)」の**承認済みリダイレクトURIに`https://cheerflow-app.web.app/__/auth/handler`を追加済み**（2026-10-27、オーナーが追加。自動作成時は`firebaseapp.com`の分しか登録されておらず、ログインが「エラー400: redirect_uri_mismatch」になった）。公開ドメインを増やす・変える場合は同じ登録が必要
 
 ### Firestoreのデータ構造（`projects/{id}`）
 従来の`state`（構成データ全体）に、アカウント・共有用のフィールドを追加：
