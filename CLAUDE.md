@@ -50,6 +50,7 @@ tests/rules.test.mjs   # ルールのテスト（npm run test:rules）
 - 旧URL（GitHub Pages）は`cheerflow.html`の`<head>`内スクリプトで新URLへ自動転送する。`?p=`/`?rv=`/`#v=`はそのまま引き継ぐ。localStorageはオリジンごとに別なので、旧URL側の端末保存データ（作業中プロジェクト・旧共有リンク一覧など）を`#migrate=`にLZString圧縮して新URLへ持っていき、新URL側で未設定のキーだけ取り込む（1.5MB超ならアップロード音声を外して移す）
 - デプロイ：`firebase deploy --only hosting,firestore:rules --project cheerflow-app`（CLIはオーナーのアカウントでログイン済み）。GitHub Pages側は`git push`で転送スクリプトが反映される
 - `firebase.json`の`hosting.ignore`で、md・ルール・tests・tools・node_modules等は公開しない
+  - **注意**：`**/.*`だけでは`.git`フォルダの中身が除外されず、初回デプロイで`.git`が約2分間公開されてしまった（認証情報は含まれておらず、内容は公開済みのGitHubリポジトリと同じ）。`**/.*/**`を追加して修正済み。**デプロイ後は`.firebase/hosting..cache`で公開ファイルが8件（cheerflow.html・index.html・sw.js・manifest・icons4件）だけであることを確認すること**
 - **Firebase Hostingで配信しているときは`authDomain`をそのホスト名にしている**（ログイン処理`/__/auth/handler`をアプリと同一ドメインで行う。別ドメインだとiPad Safariのストレージ分離で画面遷移ログインが失敗する）
 
 ### Firestoreのデータ構造（`projects/{id}`）
