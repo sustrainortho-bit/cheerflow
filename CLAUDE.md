@@ -38,7 +38,7 @@ tests/rules.test.mjs   # ルールのテスト（npm run test:rules）
 
 ## 次回セッションで最優先の確認事項（2026-10-27時点）
 
-アカウント（Googleログイン）・共有・共同編集を実装し、公開先をFirebase Hostingへ移した（下記「完了：Googleアカウント連携・共有・共同編集・Firebase Hosting移行」）。**オーナーがFirebaseコンソールでGoogleログインを有効にし、iPadの実機でログイン→共有→共同編集を試した結果を確認するところから始めること。** チュートリアル機能はオーナーの意向で保留中（こちらから催促しないこと）。
+アカウント（Googleログイン）・共有・共同編集を実装し、公開先をFirebase Hostingへ移した（下記「完了：Googleアカウント連携・共有・共同編集・Firebase Hosting移行」）。2026-10-27にオーナーがGoogleログインを有効化済み（`accounts:createAuthUri`でgoogle.comが有効なことを確認）。**オーナーがiPadの実機でログイン→共有→共同編集を試した結果を確認するところから始めること。** チュートリアル機能はオーナーの意向で保留中（こちらから催促しないこと）。
 
 ## 完了：Googleアカウント連携・共有・共同編集・Firebase Hosting移行（2026-10-27）
 
