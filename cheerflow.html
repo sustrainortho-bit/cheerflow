@@ -548,6 +548,33 @@
   }
 
   .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  /* ---------- ホーム画面に追加したアプリ表示 ----------
+     viewport-fit=cover＋ステータスバー透過のため、何もしないと画面上端が時刻・バッテリー表示の下に潜る。
+     端末ごとの安全領域(safe-area)の分だけ内側に寄せる（通常のブラウザ表示では0なので影響しない）。 */
+  #root{
+    padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  }
+  .present-overlay{
+    padding:calc(20px + env(safe-area-inset-top,0px)) calc(26px + env(safe-area-inset-right,0px))
+            calc(26px + env(safe-area-inset-bottom,0px)) calc(26px + env(safe-area-inset-left,0px));
+  }
+  @media (max-width:680px){
+    .present-overlay{
+      padding:calc(12px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px))
+              calc(14px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));
+    }
+  }
+  /* ノートは白背景のため、白い時刻表示が読めるよう上端の安全領域だけアプリの暗色で塗る */
+  .note-overlay{
+    border-top:env(safe-area-inset-top,0px) solid #121017;
+    padding-left:calc(20px + env(safe-area-inset-left,0px)); padding-right:calc(20px + env(safe-area-inset-right,0px));
+    padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  }
+  .modal-backdrop{
+    padding:calc(20px + env(safe-area-inset-top,0px)) calc(20px + env(safe-area-inset-right,0px))
+            calc(20px + env(safe-area-inset-bottom,0px)) calc(20px + env(safe-area-inset-left,0px));
+  }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -2950,15 +2977,14 @@
     var info = '';
     if(cs.bpm>0 && cs.markA!=null && cs.markEnd!=null){
       if(cs.markEnd>cs.markA){
-        var interval = 60/cs.bpm*8;
-        var n = Math.floor((cs.markEnd-cs.markA)/interval)+1;
-        info = '<p class="empty-hint">間隔 '+interval.toFixed(2)+'秒（8カウント）・シーンを'+n+'個生成します</p>';
+        var plan = countSplitPlan(cs);
+        info = '<p class="empty-hint">間隔 '+plan.interval.toFixed(2)+'秒（8カウント）・'+plan.batch+'回目の生成：シーン「'+plan.batch+'-1」〜「'+plan.batch+'-'+plan.n+'」の'+plan.n+'個を作ります</p>';
       } else {
         info = '<p class="empty-hint" style="color:var(--danger);">終点は1カウント目より後の位置にしてください</p>';
       }
     }
     return '<div class="count-split-box">' +
-      '<p class="empty-hint">曲のBPMを入力し、タイムライン上で「1カウント目」と「終点」の位置を再生して合わせてマークしてください。その間を8カウント間隔で均等に区切ります。</p>' +
+      '<p class="empty-hint">曲のBPMを入力し、タイムライン上で「1カウント目」と「終点」の位置を再生して合わせてマークしてください。その間を8カウント間隔で均等に区切ります。2曲をつなげた音源なら、1曲目を生成したあと2曲目のBPM・位置でもう一度生成してください（1曲目のシーンは残ります）。</p>' +
       '<div class="field"><label for="countSplitBpm">BPM</label><input type="number" id="countSplitBpm" min="40" max="240" step="0.1" value="'+(cs.bpm||'')+'" placeholder="例: 128"></div>' +
       '<div class="row">' +
         '<button class="btn small" id="markABtn" type="button">1カウント目にマーク'+(cs.markA!=null?'（'+fmtAudioTime(cs.markA)+'）':'')+'</button>' +
@@ -4431,29 +4457,67 @@
     state.currentSceneId = ns.id;
     markDirty(); render();
   }
+  /* カウント生成は何回目かを各シーンのcountBatchに記録する。2曲をつなげた音源では曲ごとに
+     BPMが違うので、曲ごとに①・終点をマークして生成し直す運用になる。
+     n回目に生成したシーンは「n-1, n-2, …」と名付け、それまでに生成したシーンには手を付けない。 */
+  function nextCountBatch(){
+    var max = 0;
+    state.scenes.forEach(function(s){ if(s.countBatch>max) max = s.countBatch; });
+    return max + 1;
+  }
+  function countSplitPlan(cs){
+    var interval = 60/cs.bpm*8;
+    var n = Math.floor((cs.markEnd-cs.markA)/interval) + 1;
+    var batch = nextCountBatch();
+    /* 新規プロジェクト直後の「シーン1」1つだけの状態なら、それを1つ目のシーンとして使う */
+    var only = state.scenes.length===1 ? state.scenes[0] : null;
+    var reuseFirst = !!(only && !only.countBatch);
+    var inRange = state.scenes.filter(function(s){
+      return s.startSec!=null && s.startSec>=cs.markA-0.05 && s.startSec<=cs.markEnd+0.05;
+    }).length;
+    return { interval:interval, n:n, batch:batch, reuseFirst:reuseFirst, inRange:reuseFirst ? 0 : inRange };
+  }
   function generateCountScenes(){
     var cs = ui.countSplit;
     if(!cs || !(cs.bpm>0) || cs.markA==null || cs.markEnd==null || cs.markEnd<=cs.markA) return;
-    var interval = 60/cs.bpm*8;
-    var n = Math.floor((cs.markEnd-cs.markA)/interval) + 1;
-    if(n<1) return;
-    if(!confirm('『'+fmtAudioTime(cs.markA)+'』から『'+fmtAudioTime(cs.markEnd)+'』までBPM'+cs.bpm+'（8カウント='+interval.toFixed(2)+'秒）間隔で、シーンを'+n+'個生成します。シーン1の開始位置も1カウント目に合わせます。よろしいですか？')) return;
+    var plan = countSplitPlan(cs);
+    if(plan.n<1) return;
+    var msg = '『'+fmtAudioTime(cs.markA)+'』から『'+fmtAudioTime(cs.markEnd)+'』までBPM'+cs.bpm+'（8カウント='+plan.interval.toFixed(2)+'秒）間隔で、' +
+      'シーン「'+plan.batch+'-1」〜「'+plan.batch+'-'+plan.n+'」の'+plan.n+'個を生成します。';
+    if(plan.batch>1) msg += '\nこれまでに生成したシーンはそのまま残ります。';
+    if(plan.inRange) msg += '\n※この範囲にはすでにシーンが'+plan.inRange+'個あります（消さずに残します）。';
+    if(!confirm(msg + '\nよろしいですか？')) return;
     pushHistory();
-    var baseSc = state.scenes[0];
-    baseSc.startSec = cs.markA;
-    for(var i=1;i<n;i++){
-      var t = cs.markA + i*interval;
-      var ns = {
-        id:uid('sc'), name:'', section:'transition', color:'#8d8698', timeLabel:'',
+
+    /* 新しいシーンの隊形は、1カウント目より前で最後に始まるシーン（2曲目なら1曲目の最後のシーン）を引き継ぐ */
+    var before = state.scenes.filter(function(s){ return s.startSec!=null && s.startSec < cs.markA - 0.05; });
+    var baseSc = before.length ? before.reduce(function(a,b){ return b.startSec>=a.startSec ? b : a; }) : (currentScene() || state.scenes[0]);
+    var made = [];
+    for(var i=0;i<plan.n;i++){
+      var name = plan.batch+'-'+(i+1);
+      var t = cs.markA + i*plan.interval;
+      if(i===0 && plan.reuseFirst){
+        var first = state.scenes[0];
+        first.startSec = t; first.name = name; first.countBatch = plan.batch;
+        made.push(first);
+        continue;
+      }
+      made.push({
+        id:uid('sc'), name:name, countBatch:plan.batch, section:'transition', color:'#8d8698', timeLabel:'',
         startSec:t, countNotes:{},
         note:'', videoLink:'', lightingNote:'', showIncomingPath:true, useActualPath:false,
         presence: Object.assign({}, baseSc.presence),
         positions: JSON.parse(JSON.stringify(baseSc.positions)),
         groups: JSON.parse(JSON.stringify(baseSc.groups||[]))
-      };
-      state.scenes.splice(i, 0, ns);
+      });
     }
-    state.currentSceneId = baseSc.id;
+    var fresh = plan.reuseFirst ? made.slice(1) : made;
+    /* 時間順になるよう、1カウント目より前に始まるシーンのうち最後のものの直後へまとめて挿入する */
+    var insertAt = 0;
+    state.scenes.forEach(function(s, idx){ if(s.startSec!=null && s.startSec < cs.markA - 0.05) insertAt = idx + 1; });
+    if(plan.reuseFirst) insertAt = 1;
+    Array.prototype.splice.apply(state.scenes, [insertAt, 0].concat(fresh));
+    state.currentSceneId = made[0].id;
     ui.countSplit = {open:false, bpm:null, markA:null, markEnd:null};
     markDirty(); render();
   }
